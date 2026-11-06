@@ -23,6 +23,7 @@ The Cosmo Terraform provider includes the following resources and data sources:
 - [cosmo_router_token](docs/resources/router_token.md): Manages router tokens for federated graphs in Cosmo.
 - [cosmo_persisted_operations](docs/resources/persisted_operations.md): Manages the persisted operations registered for a client of a federated graph.
 - [cosmo_organization_group](docs/resources/organization_group.md): Manages organization groups (role-based permissions) in Cosmo.
+- [cosmo_api_key](docs/resources/api_key.md): Manages organization API keys in Cosmo.
 
 ### Data Sources
 

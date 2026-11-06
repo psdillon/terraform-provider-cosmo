@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/wundergraph/cosmo/terraform-provider-cosmo/internal/api"
+	api_key "github.com/wundergraph/cosmo/terraform-provider-cosmo/internal/service/api-key"
 	clients "github.com/wundergraph/cosmo/terraform-provider-cosmo/internal/service/clients"
 	contract "github.com/wundergraph/cosmo/terraform-provider-cosmo/internal/service/contract"
 	feature_flag "github.com/wundergraph/cosmo/terraform-provider-cosmo/internal/service/feature-flag"
@@ -57,7 +58,7 @@ func (p *CosmoProvider) Schema(ctx context.Context, req provider.SchemaRequest, 
 	resp.Schema = schema.Schema{
 		MarkdownDescription: `
 The Cosmo provider allows you to interact with WunderGraph's Cosmo API, managing key resources.
-It supports creating and reading namespaces, federated graphs, subgraphs, feature subgraphs, feature flags, monographs, contracts, router tokens, persisted operations, and organization groups.
+It supports creating and reading namespaces, federated graphs, subgraphs, feature subgraphs, feature flags, monographs, contracts, router tokens, persisted operations, organization groups, and API keys.
 
 Refer to the official [Cosmo Documentation](https://cosmo-docs.wundergraph.com/) for more details.
 		`,
@@ -108,6 +109,7 @@ func (p *CosmoProvider) Resources(ctx context.Context) []func() resource.Resourc
 		contract.NewContractResource,
 		persisted_operations.NewPersistedOperationsResource,
 		organization_group.NewOrganizationGroupResource,
+		api_key.NewApiKeyResource,
 	}
 }
 
