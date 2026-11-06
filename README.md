@@ -22,6 +22,7 @@ The Cosmo Terraform provider includes the following resources and data sources:
 - [cosmo_contract](docs/resources/contract.md): Manages schema contracts in Cosmo.
 - [cosmo_router_token](docs/resources/router_token.md): Manages router tokens for federated graphs in Cosmo.
 - [cosmo_persisted_operations](docs/resources/persisted_operations.md): Manages the persisted operations registered for a client of a federated graph.
+- [cosmo_organization_group](docs/resources/organization_group.md): Manages organization groups (role-based permissions) in Cosmo.
 
 ### Data Sources
 
@@ -34,6 +35,7 @@ The Cosmo Terraform provider includes the following resources and data sources:
 - [cosmo_contract](docs/data-sources/contract.md): Retrieves information about contracts in Cosmo.
 - [cosmo_clients](docs/data-sources/clients.md): Lists the clients registered on a federated graph.
 - [cosmo_persisted_operations](docs/data-sources/persisted_operations.md): Reads the persisted operations registered for a client of a federated graph.
+- [cosmo_organization_group](docs/data-sources/organization_group.md): Retrieves an organization group, including the built-in admin group.
 
 Each resource and data source allows you to define and manage specific aspects of your Cosmo infrastructure seamlessly within Terraform.
 

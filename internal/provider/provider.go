@@ -19,6 +19,7 @@ import (
 	federated_graph "github.com/wundergraph/cosmo/terraform-provider-cosmo/internal/service/federated-graph"
 	monograph "github.com/wundergraph/cosmo/terraform-provider-cosmo/internal/service/monograph"
 	namespace "github.com/wundergraph/cosmo/terraform-provider-cosmo/internal/service/namespace"
+	organization_group "github.com/wundergraph/cosmo/terraform-provider-cosmo/internal/service/organization-group"
 	persisted_operations "github.com/wundergraph/cosmo/terraform-provider-cosmo/internal/service/persisted-operations"
 	router_token "github.com/wundergraph/cosmo/terraform-provider-cosmo/internal/service/router-token"
 	subgraph "github.com/wundergraph/cosmo/terraform-provider-cosmo/internal/service/subgraph"
@@ -56,7 +57,7 @@ func (p *CosmoProvider) Schema(ctx context.Context, req provider.SchemaRequest, 
 	resp.Schema = schema.Schema{
 		MarkdownDescription: `
 The Cosmo provider allows you to interact with WunderGraph's Cosmo API, managing key resources.
-It supports creating and reading namespaces, federated graphs, subgraphs, feature subgraphs, feature flags, monographs, contracts, router tokens, and persisted operations.
+It supports creating and reading namespaces, federated graphs, subgraphs, feature subgraphs, feature flags, monographs, contracts, router tokens, persisted operations, and organization groups.
 
 Refer to the official [Cosmo Documentation](https://cosmo-docs.wundergraph.com/) for more details.
 		`,
@@ -106,6 +107,7 @@ func (p *CosmoProvider) Resources(ctx context.Context) []func() resource.Resourc
 		router_token.NewTokenResource,
 		contract.NewContractResource,
 		persisted_operations.NewPersistedOperationsResource,
+		organization_group.NewOrganizationGroupResource,
 	}
 }
 
@@ -120,6 +122,7 @@ func (p *CosmoProvider) DataSources(ctx context.Context) []func() datasource.Dat
 		contract.NewContractDataSource,
 		persisted_operations.NewPersistedOperationsDataSource,
 		clients.NewClientsDataSource,
+		organization_group.NewOrganizationGroupDataSource,
 	}
 }
 
