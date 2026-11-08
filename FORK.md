@@ -135,35 +135,61 @@ One-time setup (most of it is already in the repo, because upstream publishes th
 Every later feature only needs step 3. Use version numbers above upstream's latest (v0.5.3) so it's
 clear the fork is newer.
 
-### Option B: build from source (works today, good for one or two people)
+### Option B: download a release and override (works today)
 
-This is how the fork is used locally at the moment. Each developer needs Git and Go installed.
+The first attempts to publish to the Registry failed with timeouts. Until it's published, use this.
+You don't need Go or a clone of the repo, and your Terraform code keeps
+`source = "wundergraph/cosmo"`. A *dev override* is a setting in Terraform's own config file. It says
+"when a config asks for `wundergraph/cosmo`, use the program in this folder instead of downloading it".
 
-```powershell
-git clone https://github.com/psdillon/terraform-provider-cosmo.git
-cd terraform-provider-cosmo
-git checkout release
-go install .          # puts terraform-provider-cosmo.exe in $env:USERPROFILE\go\bin
-```
+1. **Download the build for your machine** from
+   [the v0.6.0 release](https://github.com/psdillon/terraform-provider-cosmo/releases/tag/v0.6.0):
+   `windows_amd64` for most Windows PCs, `darwin_arm64` for Apple Silicon Macs, `linux_amd64` for Linux.
+   Unzip it into a folder of its own. In Git Bash (or a macOS/Linux terminal):
 
-Then create a Terraform CLI config file, such as `%APPDATA%\terraform.rc`. It tells Terraform to use the
-local build instead of downloading `wundergraph/cosmo`:
+   ```bash
+   mkdir -p ~/terraform-providers/cosmo
+   cd ~/terraform-providers/cosmo
+   curl -LO https://github.com/psdillon/terraform-provider-cosmo/releases/download/v0.6.0/terraform-provider-cosmo_0.6.0_windows_amd64.zip
+   unzip -o terraform-provider-cosmo_0.6.0_windows_amd64.zip
+   ```
 
-```hcl
-provider_installation {
-  dev_overrides {
-    "wundergraph/cosmo" = "C:/Users/<you>/go/bin"
-  }
-  direct {}
-}
-```
+   The folder now contains `terraform-provider-cosmo_v0.6.0.exe` (no `.exe` on macOS or Linux).
 
-Point Terraform at the file with `$env:TF_CLI_CONFIG_FILE = "$env:APPDATA\terraform.rc"`. While a dev
-override is active, Terraform prints a warning on each run and skips version checks. To update, run
-`git pull` and then `go install .` again. This approach doesn't suit CI.
+2. **Create a Terraform CLI config file** that points `wundergraph/cosmo` at that folder. Use the
+   folder's full path. On Windows, write it with forward slashes, for example
+   `C:/Users/<you>/terraform-providers/cosmo`:
 
-A middle ground is to download the zipped binary from a GitHub release on the fork (created by step 3
-of Option A) and use the same `dev_overrides` setup. That avoids installing Go, but it's still manual.
+   ```bash
+   cat > ~/.terraformrc <<EOF
+   provider_installation {
+     dev_overrides {
+       "wundergraph/cosmo" = "$(cd ~/terraform-providers/cosmo && pwd -W 2>/dev/null || pwd)"
+     }
+     direct {}
+   }
+   EOF
+   ```
+
+3. **Tell Terraform to use that file.** Add this line to `~/.bashrc` so it applies to every new terminal:
+
+   ```bash
+   export TF_CLI_CONFIG_FILE=~/.terraformrc
+   ```
+
+4. **Check it.** In any Terraform project that uses the cosmo provider, with `COSMO_API_KEY` set, run
+   `terraform plan`. It should start with *"Warning: Provider development overrides are in effect"*
+   and name your folder. That warning appears on every run while the override is set, and it's
+   expected. You don't need `terraform init` for the cosmo provider: the override replaces its
+   download. Run `init` as usual if the project uses other providers too.
+
+To update to a newer fork release, download its zip into the same folder and delete the old
+`terraform-provider-cosmo_v*` file. To stop using the fork, remove the `dev_overrides` block.
+Overrides suit people's own machines. For CI, wait for the Registry (Option A).
+
+If you'd rather build from source, which needs Git and Go, run
+`git clone https://github.com/psdillon/terraform-provider-cosmo.git`, then `git checkout release` and
+`go install .`. Then point the override at the folder `go install` writes to (`$(go env GOPATH)/bin`).
 
 ### When upstream merges the features
 
@@ -171,7 +197,7 @@ Once upstream releases a version with these features, switch everyone back to `w
 Change the `source` line and update the existing state so Terraform knows the resources now belong to
 the upstream provider:
 
-```powershell
+```bash
 terraform state replace-provider psdillon/cosmo wundergraph/cosmo
 terraform init -upgrade
 ```
@@ -186,7 +212,9 @@ terraform init -upgrade
       `examples/resources/cosmo_organization_group`, then change the rules, import it by name and destroy it
 - [ ] Run the acceptance tests (`TF_ACC=1`) against a real org
 - [ ] Generate and commit docs separately on each feature branch (`make generate`)
-- [ ] Set up publishing to the Terraform Registry as `psdillon/cosmo` and cut the first fork release
+- [x] Cut the first fork release: [v0.6.0](https://github.com/psdillon/terraform-provider-cosmo/releases/tag/v0.6.0), signed with key `B577DE22F0356A8A` (already added to the Registry)
+- [ ] Publish to the Terraform Registry as `psdillon/cosmo`. Earlier attempts failed with 503/504 timeouts
+      while the Registry fetched the release from GitHub. Retry **Publish → Provider** on registry.terraform.io
 - [ ] Open PR 1 (`feat/organization-group` → `wundergraph/main`)
 - [ ] After PR 1 merges, rebase `feat/api-key` onto the new `upstream/main` and open PR 2
 - [ ] Follow-up PR: expose `target_id` on `cosmo_federated_graph` and `cosmo_subgraph`, so group rules can use `resources`
