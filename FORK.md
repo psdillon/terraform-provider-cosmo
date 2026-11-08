@@ -145,16 +145,18 @@ You don't need Go or a clone of the repo, and your Terraform code keeps
 1. **Download the build for your machine** from
    [the v0.6.0 release](https://github.com/psdillon/terraform-provider-cosmo/releases/tag/v0.6.0):
    `windows_amd64` for most Windows PCs, `darwin_arm64` for Apple Silicon Macs, `linux_amd64` for Linux.
-   Unzip it into a folder of its own. In Git Bash (or a macOS/Linux terminal):
+   Unzip only the provider program into a folder of its own. In Git Bash (or a macOS/Linux terminal):
 
    ```bash
    mkdir -p ~/terraform-providers/cosmo
-   cd ~/terraform-providers/cosmo
+   cd /tmp
    curl -LO https://github.com/psdillon/terraform-provider-cosmo/releases/download/v0.6.0/terraform-provider-cosmo_0.6.0_windows_amd64.zip
-   unzip -o terraform-provider-cosmo_0.6.0_windows_amd64.zip
+   unzip -o -j terraform-provider-cosmo_0.6.0_windows_amd64.zip 'terraform-provider-cosmo_v*' -d ~/terraform-providers/cosmo
    ```
 
-   The folder now contains `terraform-provider-cosmo_v0.6.0.exe` (no `.exe` on macOS or Linux).
+   The folder should now contain only `terraform-provider-cosmo_v0.6.0.exe` (no `.exe` on macOS or Linux).
+   Don't put the zip or any other `terraform-provider-cosmo_*` file in that folder. Terraform would try
+   to run it as the provider and fail with an error such as "not a valid Win32 application".
 
 2. **Create a Terraform CLI config file** that points `wundergraph/cosmo` at that folder. Use the
    folder's full path. On Windows, write it with forward slashes, for example
@@ -183,9 +185,53 @@ You don't need Go or a clone of the repo, and your Terraform code keeps
    expected. You don't need `terraform init` for the cosmo provider: the override replaces its
    download. Run `init` as usual if the project uses other providers too.
 
-To update to a newer fork release, download its zip into the same folder and delete the old
-`terraform-provider-cosmo_v*` file. To stop using the fork, remove the `dev_overrides` block.
-Overrides suit people's own machines. For CI, wait for the Registry (Option A).
+To update to a newer fork release, delete the old `terraform-provider-cosmo_v*` file and unzip the new
+one into the same folder. To stop using the fork, remove the `dev_overrides` block.
+
+#### In an Azure DevOps pipeline
+
+Add this step before any Terraform step. It downloads the Linux build, checks it against the signed
+checksum file, and sets `TF_CLI_CONFIG_FILE` for the steps that follow. It works with plain `terraform`
+script steps and with the Terraform tasks from the Marketplace.
+
+```yaml
+variables:
+  COSMO_PROVIDER_VERSION: '0.6.0'
+
+steps:
+  - bash: |
+      set -euo pipefail
+      v="$COSMO_PROVIDER_VERSION"
+      base="https://github.com/psdillon/terraform-provider-cosmo/releases/download/v${v}"
+      zip="terraform-provider-cosmo_${v}_linux_amd64.zip"
+      sums="terraform-provider-cosmo_${v}_SHA256SUMS"
+      dl="$AGENT_TEMPDIRECTORY/cosmo-provider-download"
+      dir="$AGENT_TOOLSDIRECTORY/terraform-provider-cosmo/$v"
+      mkdir -p "$dl" "$dir"
+      cd "$dl"
+      curl -fsSL --retry 5 --retry-all-errors -O "$base/$zip" -O "$base/$sums"
+      grep " ${zip}\$" "$sums" | sha256sum -c -
+      # Only the provider program may sit in the override folder.
+      unzip -o -q -j "$zip" 'terraform-provider-cosmo_v*' -d "$dir"
+      rc="$AGENT_TEMPDIRECTORY/terraform.rc"
+      printf 'provider_installation {\n  dev_overrides {\n    "wundergraph/cosmo" = "%s"\n  }\n  direct {}\n}\n' "$dir" > "$rc"
+      echo "##vso[task.setvariable variable=TF_CLI_CONFIG_FILE]$rc"
+    displayName: Install cosmo provider (psdillon fork)
+
+  - bash: terraform init && terraform plan
+    displayName: Terraform plan
+    env:
+      COSMO_API_KEY: $(COSMO_API_KEY)   # secret pipeline variable; secrets must be mapped explicitly
+```
+
+Notes:
+- This is written for Linux agents, such as Microsoft-hosted `ubuntu-latest`. On a Windows agent, use
+  `windows_amd64`, and the `dev_overrides` path must be a Windows path such as `C:/agent/_work/...`.
+- Keep `COSMO_API_KEY` as a **secret** variable. Azure DevOps doesn't pass secrets to scripts unless you
+  map them with `env:`, as shown above.
+- `terraform init` still runs normally for the project's other providers and its backend. It prints a
+  warning about the override, which is expected.
+- After the Registry publish succeeds, delete the install step and change `source` to `psdillon/cosmo`.
 
 If you'd rather build from source, which needs Git and Go, run
 `git clone https://github.com/psdillon/terraform-provider-cosmo.git`, then `git checkout release` and
