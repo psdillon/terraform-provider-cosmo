@@ -34,11 +34,21 @@ jobs:
         with:
           gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
           passphrase: ${{ secrets.PASSPHRASE }}
+      # Installed through the Go module proxy: goreleaser-action's download from
+      # GitHub release assets kept failing with HTTP 504 on the runners.
+      - name: Install GoReleaser
+        run: go install github.com/goreleaser/goreleaser/v2@v2.20.0
       - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v6.0.0
-        with:
-          args: release --clean
+        run: "$(go env GOPATH)/bin/goreleaser" release --clean
         env:
           # GitHub sets the GITHUB_TOKEN secret automatically.
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}
+      # Remove the tag (and any partial release) so a failed run can simply be retried.
+      - name: Remove tag after failed release
+        if: failure() && steps.tag_version.outputs.new_tag != ''
+        run: |
+          gh release delete "$TAG" --yes --cleanup-tag || git push origin ":refs/tags/$TAG"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.tag_version.outputs.new_tag }}
