@@ -39,7 +39,7 @@ jobs:
       - name: Install GoReleaser
         run: go install github.com/goreleaser/goreleaser/v2@v2.20.0
       - name: Run GoReleaser
-        run: "$(go env GOPATH)/bin/goreleaser" release --clean
+        run: $(go env GOPATH)/bin/goreleaser release --clean
         env:
           # GitHub sets the GITHUB_TOKEN secret automatically.
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
