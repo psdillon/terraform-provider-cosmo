@@ -12,8 +12,8 @@ requests to upstream.
 
 | Feature | Type | Branch | Status |
 |---|---|---|---|
-| `cosmo_organization_group`: create and manage organization groups (role-based permissions) | resource + data source | `feat/organization-group` | Code complete; data source tested against a real org |
-| `cosmo_api_key`: create organization API keys and assign them to a group | resource | `feat/api-key` | Code complete; not yet tested against a real org |
+| `cosmo_organization_group`: create and manage organization groups (role-based permissions) | resource + data source | `feat/organization-group` | Data source tested against a real org. **Resource not yet tested** (needs an org with RBAC) |
+| `cosmo_api_key`: create organization API keys and assign them to a group | resource | `feat/api-key` | Tested against a real org: create, change group, import, destroy |
 
 Example:
 
@@ -181,7 +181,9 @@ terraform init -upgrade
 - [x] `cosmo_organization_group` resource and data source written, with unit tests passing
 - [x] `cosmo_api_key` resource written, with unit tests passing
 - [x] Data source confirmed against a real Cosmo org
-- [ ] Manually test creating, updating, importing and destroying groups and API keys against a real org
+- [x] API keys tested manually against a real org: create, change group, import, destroy
+- [ ] Groups resource tested manually against an org with RBAC enabled. Use
+      `examples/resources/cosmo_organization_group`, then change the rules, import it by name and destroy it
 - [ ] Run the acceptance tests (`TF_ACC=1`) against a real org
 - [ ] Generate and commit docs separately on each feature branch (`make generate`)
 - [ ] Set up publishing to the Terraform Registry as `psdillon/cosmo` and cut the first fork release
