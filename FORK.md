@@ -3,10 +3,84 @@
 This repository is a fork of [wundergraph/terraform-provider-cosmo](https://github.com/wundergraph/terraform-provider-cosmo),
 the Terraform provider for WunderGraph Cosmo. It adds features that the original ("upstream") project
 doesn't have yet. The plan is to contribute them back upstream. Until they're merged and released there,
-anyone who needs them has to use this fork's builds.
+the fork is published on the Terraform Registry as
+[`psdillon/cosmo`](https://registry.terraform.io/providers/psdillon/cosmo/latest).
 
 This file only exists in the fork, on the `release` branch. Keep it out of the branches used for pull
 requests to upstream.
+
+## Using the fork (start here)
+
+The fork is a drop-in replacement for `wundergraph/cosmo`. It has all of upstream's resources plus the
+ones listed under [What the fork adds](#what-the-fork-adds).
+
+### 1. Point your Terraform code at the fork
+
+In the `terraform` block of your project, change the provider's `source`:
+
+```hcl
+terraform {
+  required_providers {
+    cosmo = {
+      source  = "psdillon/cosmo"   # was "wundergraph/cosmo"
+      version = "~> 0.6"
+    }
+  }
+}
+```
+
+Then run `terraform init -upgrade`. Terraform downloads the fork from the Registry, the same way it
+downloads any provider. It reports the provider as "self-signed, key ID B577DE22F0356A8A", which is
+normal for providers published by individuals.
+
+### 2. If the project already has state from `wundergraph/cosmo`
+
+Terraform's *state* records which provider manages each resource. If the project has already been
+applied with `wundergraph/cosmo`, hand those resources over to the fork once, then re-run init:
+
+```bash
+terraform state replace-provider wundergraph/cosmo psdillon/cosmo
+terraform init -upgrade
+terraform plan   # should show no changes caused by the switch
+```
+
+If the state is stored remotely (for example in Azure Storage), this updates it there. Everyone using
+the project then needs the `source` change from step 1.
+
+### 3. Commit the lock file, with hashes for every platform
+
+`terraform init` records the provider version and checksums in `.terraform.lock.hcl`. Commit that file.
+If people use Windows while the pipeline runs on Linux, record checksums for both platforms. Otherwise
+`init` on the other platform fails:
+
+```bash
+terraform providers lock -platform=windows_amd64 -platform=linux_amd64 -platform=darwin_arm64
+```
+
+### 4. Azure DevOps pipelines
+
+No special setup is needed: `terraform init` in the pipeline downloads the fork from the Registry.
+Store the Cosmo API key as a **secret** pipeline variable named `COSMO_API_KEY`. Azure DevOps doesn't
+pass secrets to scripts unless you map them with `env:`:
+
+```yaml
+steps:
+  - bash: |
+      terraform init -input=false
+      terraform plan -input=false -out=tfplan
+    displayName: Terraform plan
+    env:
+      COSMO_API_KEY: $(COSMO_API_KEY)
+```
+
+The Terraform tasks from the Marketplace work the same way. Pass `COSMO_API_KEY` to them as an
+environment variable.
+
+### If you set up a dev override earlier
+
+Earlier versions of this file described a `dev_overrides` workaround for use before the Registry
+release. Remove the `dev_overrides` block from your Terraform CLI config file (`~/.terraformrc` or
+`%APPDATA%\terraform.rc`) and the install step from your pipeline. Then follow the steps above.
 
 ## What the fork adds
 
@@ -48,7 +122,57 @@ Requirements and caveats:
   `cosmo_federated_graph` and `cosmo_subgraph` resources don't expose those IDs yet, so for now scope
   rules with `namespaces`.
 
-Full reference docs are in `docs/resources/` and `docs/data-sources/`, with examples in `examples/`.
+The full reference docs are on the
+[Registry](https://registry.terraform.io/providers/psdillon/cosmo/latest/docs), and the examples are in
+`examples/`.
+
+### Help wanted: testing the groups resource
+
+The groups resource still needs testing against an org with RBAC enabled. You'll need an
+`organization-admin` API key for that org, set as `COSMO_API_KEY`. In an empty folder, create `main.tf`:
+
+```hcl
+terraform {
+  required_providers {
+    cosmo = {
+      source  = "psdillon/cosmo"
+      version = "~> 0.6"
+    }
+  }
+}
+
+resource "cosmo_namespace" "test" {
+  name = "tf-test-groups"
+}
+
+resource "cosmo_organization_group" "test" {
+  name        = "tf-test-group"
+  description = "Created by Terraform test"
+  rules = [
+    { role = "organization-viewer" },
+    { role = "namespace-admin", namespaces = [cosmo_namespace.test.id] },
+  ]
+}
+
+resource "cosmo_api_key" "test" {
+  name     = "tf-test-key"
+  group_id = cosmo_organization_group.test.id
+  expires  = "30_days"
+}
+```
+
+It only creates new objects named `tf-test-…`, so it doesn't touch anything that already exists. Then:
+
+1. `terraform init`, then `terraform apply`. Afterwards, `terraform plan` should say "No changes".
+2. Change the `description`, and change the rules, for example by adding `{ role = "subgraph-publisher" }`.
+   `terraform apply` should update the group **in place**, without destroying it. Then `terraform plan`
+   should say "No changes".
+3. `terraform state rm cosmo_organization_group.test`, then
+   `terraform import cosmo_organization_group.test tf-test-group`. Afterwards, `terraform plan` should
+   say "No changes".
+4. `terraform destroy`. Check in Cosmo Studio that the group, the key and the namespace are gone.
+
+Report anything unexpected as a GitHub issue on this fork, including the command output.
 
 ## How the fork is organised
 
@@ -73,15 +197,15 @@ upstream/main ──●  (v0.5.3)
                    \
                     ● feat/api-key            → PR 2 to upstream (needs PR 1)
                      │
-                     release                  → what gets built and used
+                     release                  → what gets built and published
 ```
 
 - **`main`**: kept identical to `upstream/main`. Never commit to it. It's just a clean starting point.
 - **`feat/<name>`**: one branch per feature, and each one becomes one upstream PR. A feature branch
   starts from `upstream/main`, unless it depends on another feature: `feat/api-key` needs groups, so it
   starts from `feat/organization-group`.
-- **`release`**: all feature branches combined, plus this file. Builds for yourself and others come from
-  this branch. Right now it's `feat/api-key` plus this file.
+- **`release`**: all feature branches combined, plus this file and the fork's release settings. Every
+  fork release is built from this branch.
 
 Why split it up like this: upstream maintainers review small, focused PRs much faster than one big one.
 `release` lets everyone use all the features together while those PRs are still in review.
@@ -90,154 +214,45 @@ Why split it up like this: upstream maintainers review small, focused PRs much f
 
 1. Update `main` from upstream: `git fetch upstream`, then `git checkout main` and `git merge --ff-only upstream/main`.
 2. Create the branch from `main`: `git checkout -b feat/<name> main`.
-3. Write the code, tests and examples. Run `make generate` to update the docs. Commit using
+3. Write the code, tests and examples. Run `make generate` to update the docs. On Windows, run
+   `git add docs/` afterwards so the files that only changed line endings drop out. Commit using
    [Conventional Commits](https://www.conventionalcommits.org/) (`feat: ...`, `fix: ...`).
 4. Push it: `git push -u origin feat/<name>`.
-5. Bring it into `release`: `git checkout release`, then `git merge feat/<name>`.
-6. Publish a new fork release (see below), then open the upstream PR when the feature is ready.
+5. Bring it into `release`: `git checkout release`, then `git merge feat/<name>`, then `git push`.
+6. Publish a new fork release (below), then open the upstream PR when the feature is ready.
 
-## Getting the features to other developers
+For local development, `go install .` builds the provider, and a `dev_overrides` block in the Terraform
+CLI config file points Terraform at that build instead of the Registry.
 
-Terraform downloads *providers* (plugins such as this one) automatically. The `source` in a
-`required_providers` block tells it where to get them. Upstream's address is `wundergraph/cosmo`, which
-means "the `cosmo` provider published by `wundergraph` on the public Terraform Registry". The fork's
-features aren't in that published provider, so other developers need another way to get it.
+## Publishing a fork release
 
-### Option A: publish the fork to the Terraform Registry (recommended)
+Run the **Release** workflow on the `release` branch:
 
-The fork can be published to the public [Terraform Registry](https://registry.terraform.io) under its
-own name, `psdillon/cosmo`. It's free. After that, other developers and CI pipelines don't need to
-clone anything, install Go or edit config files. They only change one line in their Terraform code:
-
-```hcl
-terraform {
-  required_providers {
-    cosmo = {
-      source  = "psdillon/cosmo"   # was "wundergraph/cosmo"
-      version = "~> 0.6"
-    }
-  }
-}
+```bash
+gh workflow run release.yml -R psdillon/terraform-provider-cosmo --ref release
 ```
 
-`terraform init` then downloads the right binary for each machine (Windows, macOS, Linux).
+or open GitHub → **Actions** → **Release** → **Run workflow** and pick `release`. It takes about 10 minutes.
+The workflow:
 
-One-time setup (most of it is already in the repo, because upstream publishes the same way):
+1. Picks the next version from the commit messages since the last tag. `feat:` bumps the minor version
+   (0.6.0 → 0.7.0), and anything else bumps the patch version (0.6.0 → 0.6.1). It then tags the commit.
+2. Builds every platform with GoReleaser, signs the checksums with the fork's GPG key and creates a
+   GitHub release.
+3. If anything fails, deletes the tag again so the run can simply be retried.
 
-1. Create a GPG signing key. The registry checks the signature on every release. Add the private key
-   and its passphrase to the fork's GitHub secrets as `GPG_PRIVATE_KEY` and `PASSPHRASE`.
-2. Sign in to registry.terraform.io with GitHub, add the GPG public key, and publish the
-   `psdillon/terraform-provider-cosmo` repository.
-3. Run the **Release** GitHub Action (`.github/workflows/release.yml`) on the `release` branch. It tags
-   a version, builds every platform with GoReleaser, signs the build and creates a GitHub release.
-   The registry picks up the new release automatically.
+The Registry picks up the new GitHub release automatically within a few minutes.
 
-Every later feature only needs step 3. Use version numbers above upstream's latest (v0.5.3) so it's
-clear the fork is newer.
+One-time setup, already done:
 
-### Option B: download a release and override (works today)
+- GPG signing key `B577DE22F0356A8A`: the private key and passphrase are stored in the fork's GitHub
+  secrets (`GPG_PRIVATE_KEY`, `PASSPHRASE`), and the public key is added to the Registry under
+  `psdillon`. If the key is ever lost, create a new one, update both secrets and add the new public key
+  to the Registry.
+- The fork's `release.yml` differs from upstream's in two ways. It releases from `release` instead of
+  `main`, and it installs GoReleaser through the Go proxy, because downloading it from GitHub kept failing.
 
-The first attempts to publish to the Registry failed with timeouts. Until it's published, use this.
-You don't need Go or a clone of the repo, and your Terraform code keeps
-`source = "wundergraph/cosmo"`. A *dev override* is a setting in Terraform's own config file. It says
-"when a config asks for `wundergraph/cosmo`, use the program in this folder instead of downloading it".
-
-1. **Download the build for your machine** from
-   [the v0.6.0 release](https://github.com/psdillon/terraform-provider-cosmo/releases/tag/v0.6.0):
-   `windows_amd64` for most Windows PCs, `darwin_arm64` for Apple Silicon Macs, `linux_amd64` for Linux.
-   Unzip only the provider program into a folder of its own. In Git Bash (or a macOS/Linux terminal):
-
-   ```bash
-   mkdir -p ~/terraform-providers/cosmo
-   cd /tmp
-   curl -LO https://github.com/psdillon/terraform-provider-cosmo/releases/download/v0.6.0/terraform-provider-cosmo_0.6.0_windows_amd64.zip
-   unzip -o -j terraform-provider-cosmo_0.6.0_windows_amd64.zip 'terraform-provider-cosmo_v*' -d ~/terraform-providers/cosmo
-   ```
-
-   The folder should now contain only `terraform-provider-cosmo_v0.6.0.exe` (no `.exe` on macOS or Linux).
-   Don't put the zip or any other `terraform-provider-cosmo_*` file in that folder. Terraform would try
-   to run it as the provider and fail with an error such as "not a valid Win32 application".
-
-2. **Create a Terraform CLI config file** that points `wundergraph/cosmo` at that folder. Use the
-   folder's full path. On Windows, write it with forward slashes, for example
-   `C:/Users/<you>/terraform-providers/cosmo`:
-
-   ```bash
-   cat > ~/.terraformrc <<EOF
-   provider_installation {
-     dev_overrides {
-       "wundergraph/cosmo" = "$(cd ~/terraform-providers/cosmo && pwd -W 2>/dev/null || pwd)"
-     }
-     direct {}
-   }
-   EOF
-   ```
-
-3. **Tell Terraform to use that file.** Add this line to `~/.bashrc` so it applies to every new terminal:
-
-   ```bash
-   export TF_CLI_CONFIG_FILE=~/.terraformrc
-   ```
-
-4. **Check it.** In any Terraform project that uses the cosmo provider, with `COSMO_API_KEY` set, run
-   `terraform plan`. It should start with *"Warning: Provider development overrides are in effect"*
-   and name your folder. That warning appears on every run while the override is set, and it's
-   expected. You don't need `terraform init` for the cosmo provider: the override replaces its
-   download. Run `init` as usual if the project uses other providers too.
-
-To update to a newer fork release, delete the old `terraform-provider-cosmo_v*` file and unzip the new
-one into the same folder. To stop using the fork, remove the `dev_overrides` block.
-
-#### In an Azure DevOps pipeline
-
-Add this step before any Terraform step. It downloads the Linux build, checks it against the signed
-checksum file, and sets `TF_CLI_CONFIG_FILE` for the steps that follow. It works with plain `terraform`
-script steps and with the Terraform tasks from the Marketplace.
-
-```yaml
-variables:
-  COSMO_PROVIDER_VERSION: '0.6.0'
-
-steps:
-  - bash: |
-      set -euo pipefail
-      v="$COSMO_PROVIDER_VERSION"
-      base="https://github.com/psdillon/terraform-provider-cosmo/releases/download/v${v}"
-      zip="terraform-provider-cosmo_${v}_linux_amd64.zip"
-      sums="terraform-provider-cosmo_${v}_SHA256SUMS"
-      dl="$AGENT_TEMPDIRECTORY/cosmo-provider-download"
-      dir="$AGENT_TOOLSDIRECTORY/terraform-provider-cosmo/$v"
-      mkdir -p "$dl" "$dir"
-      cd "$dl"
-      curl -fsSL --retry 5 --retry-all-errors -O "$base/$zip" -O "$base/$sums"
-      grep " ${zip}\$" "$sums" | sha256sum -c -
-      # Only the provider program may sit in the override folder.
-      unzip -o -q -j "$zip" 'terraform-provider-cosmo_v*' -d "$dir"
-      rc="$AGENT_TEMPDIRECTORY/terraform.rc"
-      printf 'provider_installation {\n  dev_overrides {\n    "wundergraph/cosmo" = "%s"\n  }\n  direct {}\n}\n' "$dir" > "$rc"
-      echo "##vso[task.setvariable variable=TF_CLI_CONFIG_FILE]$rc"
-    displayName: Install cosmo provider (psdillon fork)
-
-  - bash: terraform init && terraform plan
-    displayName: Terraform plan
-    env:
-      COSMO_API_KEY: $(COSMO_API_KEY)   # secret pipeline variable; secrets must be mapped explicitly
-```
-
-Notes:
-- This is written for Linux agents, such as Microsoft-hosted `ubuntu-latest`. On a Windows agent, use
-  `windows_amd64`, and the `dev_overrides` path must be a Windows path such as `C:/agent/_work/...`.
-- Keep `COSMO_API_KEY` as a **secret** variable. Azure DevOps doesn't pass secrets to scripts unless you
-  map them with `env:`, as shown above.
-- `terraform init` still runs normally for the project's other providers and its backend. It prints a
-  warning about the override, which is expected.
-- After the Registry publish succeeds, delete the install step and change `source` to `psdillon/cosmo`.
-
-If you'd rather build from source, which needs Git and Go, run
-`git clone https://github.com/psdillon/terraform-provider-cosmo.git`, then `git checkout release` and
-`go install .`. Then point the override at the folder `go install` writes to (`$(go env GOPATH)/bin`).
-
-### When upstream merges the features
+## When upstream merges the features
 
 Once upstream releases a version with these features, switch everyone back to `wundergraph/cosmo`.
 Change the `source` line and update the existing state so Terraform knows the resources now belong to
@@ -254,13 +269,12 @@ terraform init -upgrade
 - [x] `cosmo_api_key` resource written, with unit tests passing
 - [x] Data source confirmed against a real Cosmo org
 - [x] API keys tested manually against a real org: create, change group, import, destroy
-- [ ] Groups resource tested manually against an org with RBAC enabled. Use
-      `examples/resources/cosmo_organization_group`, then change the rules, import it by name and destroy it
+- [x] First fork release, [v0.6.0](https://github.com/psdillon/terraform-provider-cosmo/releases/tag/v0.6.0), published to the
+      [Terraform Registry](https://registry.terraform.io/providers/psdillon/cosmo/latest) as `psdillon/cosmo`
+- [ ] Groups resource tested manually against an org with RBAC enabled (see
+      [Help wanted](#help-wanted-testing-the-groups-resource))
 - [ ] Run the acceptance tests (`TF_ACC=1`) against a real org
 - [ ] Generate and commit docs separately on each feature branch (`make generate`)
-- [x] Cut the first fork release: [v0.6.0](https://github.com/psdillon/terraform-provider-cosmo/releases/tag/v0.6.0), signed with key `B577DE22F0356A8A` (already added to the Registry)
-- [ ] Publish to the Terraform Registry as `psdillon/cosmo`. Earlier attempts failed with 503/504 timeouts
-      while the Registry fetched the release from GitHub. Retry **Publish → Provider** on registry.terraform.io
 - [ ] Open PR 1 (`feat/organization-group` → `wundergraph/main`)
 - [ ] After PR 1 merges, rebase `feat/api-key` onto the new `upstream/main` and open PR 2
 - [ ] Follow-up PR: expose `target_id` on `cosmo_federated_graph` and `cosmo_subgraph`, so group rules can use `resources`
