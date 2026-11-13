@@ -88,6 +88,7 @@ release. Remove the `dev_overrides` block from your Terraform CLI config file (`
 |---|---|---|---|
 | `cosmo_organization_group`: create and manage organization groups (role-based permissions) | resource + data source | `feat/organization-group` | Data source tested against a real org. **Resource not yet tested** (needs an org with RBAC) |
 | `cosmo_api_key`: create organization API keys and assign them to a group | resource | `feat/api-key` | Tested against a real org: create, change group, import, destroy |
+| `cosmo_contract`: `create_temp_subgraph_if_needed` and `allow_recomposing_other_graphs`, to create a contract before its source graph has any subgraphs | resource options | `feat/contract-temp-subgraph` | Fork-only (unlikely to be accepted upstream). Partly tested against Cosmo Cloud: refusing when other graphs would be affected, publishing so the source graph composes, clean-up, and deleting after the contract exists. **Not yet tested end to end** (needs an org that allows two or more graphs) |
 
 Example:
 
@@ -121,6 +122,39 @@ Requirements and caveats:
 - A rule's `resources` list needs target IDs for federated graphs and subgraphs. The existing
   `cosmo_federated_graph` and `cosmo_subgraph` resources don't expose those IDs yet, so for now scope
   rules with `namespaces`.
+
+### Contracts on graphs that have no subgraphs yet
+
+Cosmo won't create a contract until its source graph has composed, which needs at least one published
+subgraph. With `create_temp_subgraph_if_needed`, the provider publishes a temporary one-field subgraph
+named `temp-contract-bootstrap-<contract name>`, creates the contract, and deletes the subgraph again:
+
+```hcl
+resource "cosmo_contract" "public" {
+  name         = "public"
+  namespace    = cosmo_namespace.main.name
+  source       = cosmo_federated_graph.main.name
+  routing_url  = "https://public.example.com"
+  include_tags = ["public"]
+
+  create_temp_subgraph_if_needed = true
+
+  # Create the contract after every other graph in this configuration, so none of them
+  # can pick up the temporary subgraph.
+  depends_on = [cosmo_federated_graph.main]
+}
+```
+
+Read the warnings in the [contract docs](docs/resources/contract.md) before using it. In short:
+
+- By default it refuses, and changes nothing, if the temporary subgraph would also recompose any other
+  graph or contract, including other contracts of the same graph. `allow_recomposing_other_graphs = true`
+  allows that, but a graph that is in use would briefly serve the dummy field.
+- Until a real subgraph is published, routers for the source graph and the contract get a schema that
+  contains only the dummy field `_tempContractBootstrap`.
+- If an apply is killed part-way, the temporary subgraph can be left behind. Every plan for the contract
+  then warns about it until it's deleted.
+- The API key must be able to create, publish and delete subgraphs, and to see every graph in the namespace.
 
 The full reference docs are on the
 [Registry](https://registry.terraform.io/providers/psdillon/cosmo/latest/docs), and the examples are in

@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -38,6 +39,9 @@ type contractResourceModel struct {
 	AdmissionWebhookUrl    types.String `tfsdk:"admission_webhook_url"`
 	AdmissionWebhookSecret types.String `tfsdk:"admission_webhook_secret"`
 	SupportsFederation     types.Bool   `tfsdk:"supports_federation"`
+	// These two only affect how the contract is created; Cosmo doesn't store them.
+	CreateTempSubgraphIfNeeded  types.Bool `tfsdk:"create_temp_subgraph_if_needed"`
+	AllowRecomposingOtherGraphs types.Bool `tfsdk:"allow_recomposing_other_graphs"`
 }
 
 func (r *contractResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -97,6 +101,28 @@ For more information, refer to the Cosmo Documentation at https://cosmo-docs.wun
 				Optional: true,
 				Computed: true,
 			},
+			"create_temp_subgraph_if_needed": schema.BoolAttribute{
+				Optional: true,
+				Computed: true,
+				Default:  booldefault.StaticBool(false),
+				MarkdownDescription: "If `true`, and the source graph has not composed and has no subgraph with a published schema " +
+					"when this contract is created, the provider creates the contract with the help of a temporary subgraph, which " +
+					"it deletes again straight afterwards. Defaults to `false`. Only used when the contract is created; changing it " +
+					"later has no effect. **Leaves a dummy schema on the source graph's and the contract's routers until a real " +
+					"subgraph is published.** See [Creating a contract before the source graph has any subgraphs]" +
+					"(#creating-a-contract-before-the-source-graph-has-any-subgraphs) for how it works and its risks.",
+			},
+			"allow_recomposing_other_graphs": schema.BoolAttribute{
+				Optional: true,
+				Computed: true,
+				Default:  booldefault.StaticBool(false),
+				MarkdownDescription: "Only used with `create_temp_subgraph_if_needed`. If `false` (the default), the provider refuses " +
+					"to use a temporary subgraph if that would recompose any graph or contract other than the source graph. If `true`, " +
+					"it goes ahead anyway and lists what was recomposed in a warning. **Dangerous:** a recomposed graph that is in use " +
+					"briefly serves the dummy `_tempContractBootstrap` field to its routers, and is recomposed again when the temporary " +
+					"subgraph is deleted. Existing contracts of the source graph count as other graphs, so this must be `true` to " +
+					"create a second contract this way while the source graph is still empty.",
+			},
 		},
 	}
 }
@@ -124,6 +150,28 @@ func (r *contractResource) Create(ctx context.Context, req resource.CreateReques
 
 	if resp.Diagnostics.HasError() {
 		return
+	}
+
+	if data.CreateTempSubgraphIfNeeded.ValueBool() {
+		unlock := lockSourceGraph(data.Namespace.ValueString(), data.SourceGraphName.ValueString())
+		defer unlock()
+
+		temp, diags := r.setUpTempSubgraph(ctx, data)
+		resp.Diagnostics.Append(diags...)
+		if diags.HasError() {
+			return
+		}
+		if temp != nil {
+			// Runs after the contract is created, whether or not that worked.
+			defer func() {
+				resp.Diagnostics.Append(r.removeTempSubgraph(ctx, temp)...)
+				if len(temp.affected) > 0 {
+					resp.Diagnostics.AddWarning("Other Graphs Recomposed", fmt.Sprintf(
+						"Creating contract %q used a temporary subgraph, which also recomposed (twice): %s.",
+						data.Name.ValueString(), strings.Join(temp.affected, ", ")))
+				}
+			}()
+		}
 	}
 
 	response, apiError := r.createAndFetchContract(ctx, data, resp)
@@ -263,6 +311,25 @@ func (r *contractResource) Read(ctx context.Context, req resource.ReadRequest, r
 
 	if graph.GetAdmissionWebhookUrl() != "" {
 		data.AdmissionWebhookUrl = types.StringValue(*graph.AdmissionWebhookUrl)
+	}
+
+	// Not stored in Cosmo: keep what's in state, and default to false (e.g. after an import).
+	if data.CreateTempSubgraphIfNeeded.IsNull() {
+		data.CreateTempSubgraphIfNeeded = types.BoolValue(false)
+	}
+	if data.AllowRecomposingOtherGraphs.IsNull() {
+		data.AllowRecomposingOtherGraphs = types.BoolValue(false)
+	}
+
+	if data.CreateTempSubgraphIfNeeded.ValueBool() {
+		subgraphName := tempSubgraphName(data.Name.ValueString())
+		if subgraph, apiError := r.client.GetSubgraph(ctx, subgraphName, data.Namespace.ValueString()); apiError == nil && subgraph != nil {
+			utils.AddDiagnosticWarning(resp, "Temporary Subgraph Left Behind", fmt.Sprintf(
+				"Temporary subgraph %q in namespace %q was created to help create this contract, but was never deleted "+
+					"(for example, because an apply was interrupted). Its dummy Query field is part of the graphs it belongs to. "+
+					"Delete it in Cosmo Studio or with: wgc subgraph delete %s -n %s",
+				subgraphName, data.Namespace.ValueString(), subgraphName, data.Namespace.ValueString()))
+		}
 	}
 
 	utils.LogAction(ctx, "read", data.Id.ValueString(), data.Name.ValueString(), data.Namespace.ValueString())

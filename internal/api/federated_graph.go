@@ -143,3 +143,27 @@ func (p *PlatformClient) GetFederatedGraphById(ctx context.Context, id string) (
 
 	return response.Msg, nil
 }
+
+// GetFederatedGraphs lists every federated graph, monograph and contract in a namespace.
+func (p *PlatformClient) GetFederatedGraphs(ctx context.Context, namespace string) ([]*platformv1.FederatedGraph, *ApiError) {
+	// A limit of 0 means "no limit" to the Cosmo API.
+	request := connect.NewRequest(&platformv1.GetFederatedGraphsRequest{
+		Namespace: namespace,
+	})
+
+	response, err := p.Client.GetFederatedGraphs(ctx, request)
+	if err != nil {
+		return nil, &ApiError{Err: err, Reason: "GetFederatedGraphs", Status: common.EnumStatusCode_ERR}
+	}
+
+	if response.Msg == nil {
+		return nil, &ApiError{Err: ErrEmptyMsg, Reason: "GetFederatedGraphs", Status: common.EnumStatusCode_ERR}
+	}
+
+	apiError := handleErrorCodes(response.Msg.GetResponse().Code, response.Msg.String())
+	if apiError != nil {
+		return nil, apiError
+	}
+
+	return response.Msg.GetGraphs(), nil
+}
