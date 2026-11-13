@@ -2,11 +2,11 @@ package namespace_test
 
 import (
 	"fmt"
-	"regexp"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 
 	"github.com/wundergraph/cosmo/terraform-provider-cosmo/internal/acceptance"
 )
@@ -30,8 +30,15 @@ func TestAccNamespaceResource(t *testing.T) {
 				RefreshState: true,
 			},
 			{
-				Config:      testAccNamespaceResourceConfig(updatedName),
-				ExpectError: regexp.MustCompile(`Changing the namespace name requires recreation.`),
+				Config: testAccNamespaceResourceConfig(updatedName),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction("cosmo_namespace.test", plancheck.ResourceActionReplace),
+					},
+				},
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("cosmo_namespace.test", "name", updatedName),
+				),
 			},
 			{
 				Config:  testAccNamespaceResourceConfig(rName),

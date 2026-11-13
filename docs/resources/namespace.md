@@ -26,7 +26,7 @@ resource "cosmo_namespace" "test" {
 
 ### Required
 
-- `name` (String) The name of the namespace.
+- `name` (String) The name of the namespace. Changing the name destroys the namespace and creates a new one.
 
 ### Read-Only
 

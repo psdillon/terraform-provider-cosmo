@@ -6,6 +6,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	platformv1 "github.com/wundergraph/cosmo/connect-go/gen/proto/wg/cosmo/platform/v1"
 	"github.com/wundergraph/cosmo/terraform-provider-cosmo/internal/api"
@@ -59,10 +61,16 @@ For more information on namespaces, please refer to the [Cosmo Documentation](ht
 			"id": schema.StringAttribute{
 				Computed:            true,
 				MarkdownDescription: "The unique identifier of the namespace resource.",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"name": schema.StringAttribute{
 				Required:            true,
-				MarkdownDescription: "The name of the namespace.",
+				MarkdownDescription: "The name of the namespace. Changing the name destroys the namespace and creates a new one.",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
 			},
 		},
 	}
@@ -132,40 +140,15 @@ func (r *NamespaceResource) Read(ctx context.Context, req resource.ReadRequest, 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
+// Update is never called with a real change: "name" is the only configurable
+// attribute and changing it forces Terraform to replace the resource
+// (see RequiresReplace in Schema). The planned values are simply stored.
 func (r *NamespaceResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var data NamespaceResourceModel
-	var state NamespaceResourceModel
-	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
-
 	if resp.Diagnostics.HasError() {
 		return
 	}
-
-	if data.Name.ValueString() != state.Name.ValueString() {
-		utils.AddDiagnosticError(resp, ErrUpdatingNamespace, "Changing the namespace name requires recreation.")
-		return
-	}
-
-	namespace, err := getNamespace(ctx, *r.client, data.Id.ValueString(), data.Name.ValueString())
-	if err != nil {
-		utils.AddDiagnosticError(resp,
-			ErrReadingNamespace,
-			err.Error(),
-		)
-		return
-	}
-
-	renameApiError := r.client.RenameNamespace(ctx, namespace.Name, data.Name.String())
-	if renameApiError != nil {
-		utils.AddDiagnosticError(resp,
-			ErrUpdatingNamespace,
-			renameApiError.Error(),
-		)
-		return
-	}
-
-	utils.LogAction(ctx, "updated", data.Id.ValueString(), data.Name.ValueString(), "")
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
