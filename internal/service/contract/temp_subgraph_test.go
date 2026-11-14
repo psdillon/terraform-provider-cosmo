@@ -4,6 +4,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/wundergraph/cosmo/connect-go/gen/proto/wg/cosmo/common"
 	platformv1 "github.com/wundergraph/cosmo/connect-go/gen/proto/wg/cosmo/platform/v1"
@@ -12,6 +13,14 @@ import (
 
 // Cosmo's graph name rules (controlplane/src/core/util.ts).
 var cosmoGraphName = regexp.MustCompile(`^[\dA-Za-z]+(?:[./@_-][\dA-Za-z]+)*$`)
+
+// Cosmo rejects requests whose timeout is over 120000ms, and the Connect client sends the context
+// deadline as the request timeout.
+func TestCleanupTimeoutWithinCosmoLimit(t *testing.T) {
+	if cleanupTimeout >= 2*time.Minute {
+		t.Fatalf("cleanupTimeout %s must be under Cosmo's 2 minute request limit", cleanupTimeout)
+	}
+}
 
 func TestTempSubgraphName(t *testing.T) {
 	if got := tempSubgraphName("my-contract"); got != "temp-contract-bootstrap-my-contract" {

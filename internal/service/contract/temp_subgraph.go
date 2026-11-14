@@ -46,8 +46,10 @@ const (
 	maxGraphNameLength = 100
 	// maxLabelCombinations caps the search for the best set of labels.
 	maxLabelCombinations = 4096
-	// cleanupTimeout bounds the clean-up, which keeps running even if Terraform is interrupted.
-	cleanupTimeout = 5 * time.Minute
+	// cleanupTimeout bounds the clean-up, which keeps running even if Terraform is interrupted. The
+	// Connect client sends the context deadline to Cosmo as the request timeout, and Cosmo rejects
+	// any request timeout over 120000ms with invalid_argument, so this must stay below 2 minutes.
+	cleanupTimeout = 110 * time.Second
 )
 
 // sourceGraphLocks makes contracts that share a source graph bootstrap one at a time. Terraform
