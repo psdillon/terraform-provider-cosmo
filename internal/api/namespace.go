@@ -90,3 +90,75 @@ func (p *PlatformClient) GetNamespace(ctx context.Context, id, name string) (*pl
 
 	return response.Msg.Namespace, nil
 }
+
+// NamespaceProposalConfig is the proposal setting of a namespace as Cosmo reports it.
+type NamespaceProposalConfig struct {
+	Enabled              bool
+	CheckSeverityLevel   platformv1.LintSeverity
+	PublishSeverityLevel platformv1.LintSeverity
+}
+
+// EnableProposalsForNamespace turns proposals on or off for a namespace.
+// Turning them on resets both severity levels to "error"; turning them off
+// deletes the namespace's proposal settings.
+func (p *PlatformClient) EnableProposalsForNamespace(ctx context.Context, namespace string, enable bool) *ApiError {
+	request := connect.NewRequest(&platformv1.EnableProposalsForNamespaceRequest{
+		Namespace:       namespace,
+		EnableProposals: enable,
+	})
+	response, err := p.Client.EnableProposalsForNamespace(ctx, request)
+	if err != nil {
+		return &ApiError{Err: err, Reason: "EnableProposalsForNamespace", Status: common.EnumStatusCode_ERR}
+	}
+
+	if response.Msg == nil {
+		return &ApiError{Err: ErrEmptyMsg, Reason: "EnableProposalsForNamespace", Status: common.EnumStatusCode_ERR}
+	}
+
+	return handleErrorCodes(response.Msg.GetResponse().Code, response.Msg.String())
+}
+
+// ConfigureNamespaceProposalConfig sets the severity levels of a namespace's proposal checks.
+func (p *PlatformClient) ConfigureNamespaceProposalConfig(ctx context.Context, namespace string, checkSeverity, publishSeverity platformv1.LintSeverity) *ApiError {
+	request := connect.NewRequest(&platformv1.ConfigureNamespaceProposalConfigRequest{
+		Namespace:            namespace,
+		CheckSeverityLevel:   checkSeverity,
+		PublishSeverityLevel: publishSeverity,
+	})
+	response, err := p.Client.ConfigureNamespaceProposalConfig(ctx, request)
+	if err != nil {
+		return &ApiError{Err: err, Reason: "ConfigureNamespaceProposalConfig", Status: common.EnumStatusCode_ERR}
+	}
+
+	if response.Msg == nil {
+		return &ApiError{Err: ErrEmptyMsg, Reason: "ConfigureNamespaceProposalConfig", Status: common.EnumStatusCode_ERR}
+	}
+
+	return handleErrorCodes(response.Msg.GetResponse().Code, response.Msg.String())
+}
+
+// GetNamespaceProposalConfig returns whether proposals are enabled for a namespace and,
+// if so, their severity levels. Cosmo answers ERR_UPGRADE_PLAN (see IsUpgradePlanError)
+// when the organization's plan does not include proposals.
+func (p *PlatformClient) GetNamespaceProposalConfig(ctx context.Context, namespace string) (*NamespaceProposalConfig, *ApiError) {
+	request := connect.NewRequest(&platformv1.GetNamespaceProposalConfigRequest{Namespace: namespace})
+	response, err := p.Client.GetNamespaceProposalConfig(ctx, request)
+	if err != nil {
+		return nil, &ApiError{Err: err, Reason: "GetNamespaceProposalConfig", Status: common.EnumStatusCode_ERR}
+	}
+
+	if response.Msg == nil {
+		return nil, &ApiError{Err: ErrEmptyMsg, Reason: "GetNamespaceProposalConfig", Status: common.EnumStatusCode_ERR}
+	}
+
+	apiError := handleErrorCodes(response.Msg.GetResponse().Code, response.Msg.String())
+	if apiError != nil {
+		return nil, apiError
+	}
+
+	return &NamespaceProposalConfig{
+		Enabled:              response.Msg.GetEnabled(),
+		CheckSeverityLevel:   response.Msg.GetCheckSeverityLevel(),
+		PublishSeverityLevel: response.Msg.GetPublishSeverityLevel(),
+	}, nil
+}

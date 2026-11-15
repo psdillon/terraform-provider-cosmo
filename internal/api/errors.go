@@ -18,6 +18,7 @@ var (
 	ErrEmptyMsg                  = errors.New("ErrEmptyMsg")
 	ErrContractCompositionFailed = errors.New("ErrContractCompositionFailed")
 	ErrInvalidSubgraphSchema     = errors.New("ErrInvalidSubgraphSchema")
+	ErrUpgradePlan               = errors.New("ErrUpgradePlan")
 )
 
 const (
@@ -26,6 +27,12 @@ const (
 
 func IsNotFoundError(err *ApiError) bool {
 	return errors.Is(err.Err, ErrNotFound)
+}
+
+// IsUpgradePlanError reports whether Cosmo refused the call because the
+// organization's plan does not include the feature.
+func IsUpgradePlanError(err *ApiError) bool {
+	return errors.Is(err.Err, ErrUpgradePlan)
 }
 
 func IsSubgraphCompositionFailedError(err *ApiError) bool {
@@ -77,6 +84,8 @@ func handleErrorCodes(statusCode common.EnumStatusCode, reason string) *ApiError
 		return &ApiError{Err: ErrLimitReached, Reason: reason, Status: statusCode}
 	case common.EnumStatusCode_ERR_INVALID_LABELS:
 		return &ApiError{Err: ErrInvalidLabels, Reason: reason, Status: statusCode}
+	case common.EnumStatusCode_ERR_UPGRADE_PLAN:
+		return &ApiError{Err: ErrUpgradePlan, Reason: reason, Status: statusCode}
 	default:
 		return &ApiError{Err: ErrUnknown, Reason: reason, Status: statusCode}
 	}

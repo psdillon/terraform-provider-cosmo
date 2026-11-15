@@ -7,5 +7,6 @@ const (
 	ErrReadingNamespace         = "Error Reading Namespace"
 	ErrUpdatingNamespace        = "Error Updating Namespace"
 	ErrDeletingNamespace        = "Error Deleting Namespace"
+	ErrConfiguringProposals     = "Error Configuring Namespace Proposals"
 	ErrUnexpectedDataSourceType = "Unexpected Data Source Configure Type"
 )

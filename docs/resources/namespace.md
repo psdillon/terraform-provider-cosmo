@@ -5,6 +5,7 @@ subcategory: ""
 description: |-
   Namespaces group federated graphs and subgraphs. Each organization has a default, non-deletable namespace.
   For more information on namespaces, please refer to the Cosmo Documentation https://cosmo-docs.wundergraph.com/cli/namespace.
+  Set proposals to turn on schema proposals https://cosmo-docs.wundergraph.com/concepts/proposals for the namespace. With proposals on, Cosmo compares each subgraph schema check and publish in the namespace against the approved proposals. This includes the subgraph schemas this provider publishes. Proposals need a Cosmo plan that includes them.
 ---
 
 # cosmo_namespace (Resource)
@@ -13,11 +14,25 @@ Namespaces group federated graphs and subgraphs. Each organization has a default
 
 For more information on namespaces, please refer to the [Cosmo Documentation](https://cosmo-docs.wundergraph.com/cli/namespace).
 
+Set `proposals` to turn on [schema proposals](https://cosmo-docs.wundergraph.com/concepts/proposals) for the namespace. With proposals on, Cosmo compares each subgraph schema check and publish in the namespace against the approved proposals. This includes the subgraph schemas this provider publishes. Proposals need a Cosmo plan that includes them.
+
 ## Example Usage
 
 ```terraform
 resource "cosmo_namespace" "test" {
   name = var.name
+}
+
+# A namespace with schema proposals turned on (needs a Cosmo plan that includes
+# proposals). Subgraph checks that match no approved or draft proposal only warn,
+# while publishes that match no approved proposal are rejected.
+resource "cosmo_namespace" "with_proposals" {
+  name = "${var.name}-proposals"
+
+  proposals = {
+    check_severity_level   = "warn"
+    publish_severity_level = "error"
+  }
 }
 ```
 
@@ -28,9 +43,21 @@ resource "cosmo_namespace" "test" {
 
 - `name` (String) The name of the namespace. Changing the name destroys the namespace and creates a new one.
 
+### Optional
+
+- `proposals` (Attributes) Turns on schema proposals for the namespace. Leave it out to keep proposals off; removing it turns them off and Cosmo discards the severity levels. `proposals = {}` turns them on with both levels set to `error`. (see [below for nested schema](#nestedatt--proposals))
+
 ### Read-Only
 
 - `id` (String) The unique identifier of the namespace resource.
+
+<a id="nestedatt--proposals"></a>
+### Nested Schema for `proposals`
+
+Optional:
+
+- `check_severity_level` (String) What happens when a subgraph schema check (`wgc subgraph check`) finds a schema that matches no approved or draft proposal: `error` fails the check, `warn` only reports it. Defaults to `error`.
+- `publish_severity_level` (String) What happens when a subgraph schema publish (`wgc subgraph publish`, or a `cosmo_subgraph` with a `schema`) sends a schema that matches no approved proposal: `error` rejects the publish, `warn` publishes it with a warning. Defaults to `error`.
 
 ## Import
 
