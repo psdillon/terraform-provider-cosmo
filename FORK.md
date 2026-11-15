@@ -89,6 +89,7 @@ release. Remove the `dev_overrides` block from your Terraform CLI config file (`
 | `cosmo_organization_group`: create and manage organization groups (role-based permissions) | resource + data source | `feat/organization-group` | Data source tested against a real org. **Resource not yet tested** (needs an org with RBAC) |
 | `cosmo_api_key`: create organization API keys and assign them to a group | resource | `feat/api-key` | Tested against a real org: create, change group, import, destroy |
 | `cosmo_contract`: `create_temp_subgraph_if_needed` and `allow_recomposing_other_graphs`, to create a contract before its source graph has any subgraphs | resource options | `feat/contract-temp-subgraph` | Fork-only (unlikely to be accepted upstream). Partly tested against Cosmo Cloud: refusing when other graphs would be affected, publishing so the source graph composes, clean-up, and deleting after the contract exists. **Not yet tested end to end** (needs an org that allows two or more graphs) |
+| `cosmo_namespace`: `proposals`, to turn on schema proposals and set their check and publish severity levels | resource option | `feat/namespace-proposals` | Unit tests passing (fake Cosmo and plan-only). **Not yet tested against a real org** (needs a Cosmo plan with proposals) |
 
 Example:
 
@@ -155,6 +156,34 @@ Read the warnings in the [contract docs](docs/resources/contract.md) before usin
 - If an apply is killed part-way, the temporary subgraph can be left behind. Every plan for the contract
   then warns about it until it's deleted.
 - The API key must be able to create, publish and delete subgraphs, and to see every graph in the namespace.
+
+### Schema proposals on a namespace
+
+Add a `proposals` block to turn on [schema proposals](https://cosmo-docs.wundergraph.com/concepts/proposals)
+for a namespace, and remove it to turn them off again:
+
+```hcl
+resource "cosmo_namespace" "main" {
+  name = "production"
+
+  proposals = {
+    check_severity_level   = "warn"  # "warn" or "error", default "error"
+    publish_severity_level = "error" # "warn" or "error", default "error"
+  }
+}
+```
+
+- `check_severity_level`: when `wgc subgraph check` finds a schema that matches no approved or draft
+  proposal, `error` fails the check and `warn` only reports it.
+- `publish_severity_level`: when a publish sends a schema that matches no approved proposal, `error`
+  rejects it and `warn` publishes it with a warning.
+- Publishes from Terraform count too. With `publish_severity_level = "error"`, a `cosmo_subgraph` with a
+  `schema` in that namespace (and the contract feature's temporary subgraph) is rejected unless an
+  approved proposal matches it.
+- Proposals need a Cosmo plan that includes them. On other plans, namespaces without `proposals` keep
+  working as before.
+- The `default` namespace already exists, so it can't be created with Terraform. Importing it works, but
+  `terraform destroy` would then try to delete it and fail, because Cosmo doesn't allow that.
 
 The full reference docs are on the
 [Registry](https://registry.terraform.io/providers/psdillon/cosmo/latest/docs), and the examples are in
