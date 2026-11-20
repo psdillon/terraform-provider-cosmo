@@ -297,12 +297,22 @@ Why split it up like this: upstream maintainers review small, focused PRs much f
 
 1. Update `main` from upstream: `git fetch upstream`, then `git checkout main` and `git merge --ff-only upstream/main`.
 2. Create the branch from `main`: `git checkout -b feat/<name> main`.
-3. Write the code, tests and examples. Run `make generate` to update the docs. On Windows, run
-   `git add docs/` afterwards so the files that only changed line endings drop out. Commit using
+3. Write the code, tests and examples. Run `make generate` to update the docs. Commit using
    [Conventional Commits](https://www.conventionalcommits.org/) (`feat: ...`, `fix: ...`).
 4. Push it: `git push -u origin feat/<name>`.
 5. Bring it into `release`: `git checkout release`, then `git merge feat/<name>`, then `git push`.
 6. Publish a new fork release (below), then open the upstream PR when the feature is ready.
+
+On Windows, do this once before working on the provider. The repository uses Unix line endings (LF),
+and so do `gofmt` and `make generate`. Git for Windows converts files to Windows line endings (CRLF) by
+default, so those tools would otherwise rewrite every file they touch and git would warn
+"LF will be replaced by CRLF":
+
+```bash
+git config --global core.autocrlf input   # keep LF on disk; turn CRLF into LF on commit
+# then, in a clone with no uncommitted changes, rewrite its files as LF:
+git rm --cached -r -q . && git reset --hard
+```
 
 For local development, `go install .` builds the provider, and a `dev_overrides` block in the Terraform
 CLI config file points Terraform at that build instead of the Registry.
