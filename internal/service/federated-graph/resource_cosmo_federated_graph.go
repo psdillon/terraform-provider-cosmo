@@ -155,7 +155,7 @@ func (r *FederatedGraphResource) Create(ctx context.Context, req resource.Create
 	data.LabelMatchers = types.ListValueMust(types.StringType, responseLabelMatchers)
 
 	if graph.Readme != nil {
-		data.Readme = types.StringValue(*graph.Readme)
+		data.Readme = utils.ReconcileReadme(data.Readme, *graph.Readme)
 	}
 
 	if graph.GetAdmissionWebhookUrl() != "" {
@@ -227,7 +227,7 @@ func (r *FederatedGraphResource) Read(ctx context.Context, req resource.ReadRequ
 	data.LabelMatchers = types.ListValueMust(types.StringType, responseLabelMatchers)
 
 	if graph.Readme != nil {
-		data.Readme = types.StringValue(*graph.Readme)
+		data.Readme = utils.ReconcileReadme(data.Readme, *graph.Readme)
 	}
 
 	if graph.GetAdmissionWebhookUrl() != "" {
@@ -310,7 +310,7 @@ func (r *FederatedGraphResource) Update(ctx context.Context, req resource.Update
 	data.LabelMatchers = types.ListValueMust(types.StringType, responseLabelMatchers)
 
 	if graph.Readme != nil {
-		data.Readme = types.StringValue(*graph.Readme)
+		data.Readme = utils.ReconcileReadme(data.Readme, *graph.Readme)
 	}
 
 	if graph.GetAdmissionWebhookUrl() != "" {

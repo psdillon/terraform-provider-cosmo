@@ -158,7 +158,7 @@ func (r *contractResource) Create(ctx context.Context, req resource.CreateReques
 	}
 
 	if graph.Readme != nil {
-		data.Readme = types.StringValue(*graph.Readme)
+		data.Readme = utils.ReconcileReadme(data.Readme, *graph.Readme)
 	}
 
 	if graph.GetAdmissionWebhookUrl() != "" {
@@ -258,7 +258,7 @@ func (r *contractResource) Read(ctx context.Context, req resource.ReadRequest, r
 	}
 
 	if graph.Readme != nil {
-		data.Readme = types.StringValue(*graph.Readme)
+		data.Readme = utils.ReconcileReadme(data.Readme, *graph.Readme)
 	}
 
 	if graph.GetAdmissionWebhookUrl() != "" {
@@ -366,7 +366,7 @@ func (r *contractResource) Update(ctx context.Context, req resource.UpdateReques
 	}
 
 	if graph.Readme != nil {
-		data.Readme = types.StringValue(*graph.Readme)
+		data.Readme = utils.ReconcileReadme(data.Readme, *graph.Readme)
 	}
 
 	if graph.GetAdmissionWebhookUrl() != "" {

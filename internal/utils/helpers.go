@@ -10,10 +10,22 @@ func ReconcileSchema(configured types.String, serverSchema string) types.String 
 	if serverSchema == "" {
 		return configured
 	}
-	if strings.TrimSpace(configured.ValueString()) == strings.TrimSpace(serverSchema) {
-		return configured
+	return reconcileTrimmed(configured, serverSchema)
+}
+
+// ReconcileReadme returns the readme to store in state. Cosmo strips surrounding whitespace (such as the
+// trailing newline of a heredoc) from readmes, so the configured or prior value is kept when it differs
+// from Cosmo's only by that whitespace. Otherwise Terraform reports "Provider produced inconsistent result
+// after apply", and every plan shows a readme change.
+func ReconcileReadme(current types.String, serverReadme string) types.String {
+	return reconcileTrimmed(current, serverReadme)
+}
+
+func reconcileTrimmed(current types.String, server string) types.String {
+	if strings.TrimSpace(current.ValueString()) == strings.TrimSpace(server) {
+		return current
 	}
-	return types.StringValue(serverSchema)
+	return types.StringValue(server)
 }
 
 func StringValueOrNil(s types.String) *string {

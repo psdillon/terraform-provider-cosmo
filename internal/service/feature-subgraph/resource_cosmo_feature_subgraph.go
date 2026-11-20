@@ -180,7 +180,7 @@ func (r *FeatureSubgraphResource) Create(ctx context.Context, req resource.Creat
 	}
 
 	if featureSubgraph.Readme != nil {
-		data.Readme = types.StringValue(featureSubgraph.GetReadme())
+		data.Readme = utils.ReconcileReadme(data.Readme, featureSubgraph.GetReadme())
 	}
 
 	data.Schema = utils.ReconcileSchema(data.Schema, subgraphSchema)
@@ -267,7 +267,7 @@ func (r *FeatureSubgraphResource) Read(ctx context.Context, req resource.ReadReq
 	}
 
 	if subgraph.Readme != nil {
-		data.Readme = types.StringValue(subgraph.GetReadme())
+		data.Readme = utils.ReconcileReadme(data.Readme, subgraph.GetReadme())
 	}
 
 	data.Schema = utils.ReconcileSchema(data.Schema, subgraphSchema)
@@ -380,7 +380,7 @@ func (r *FeatureSubgraphResource) Update(ctx context.Context, req resource.Updat
 	}
 
 	if subgraph.Readme != nil {
-		planData.Readme = types.StringValue(subgraph.GetReadme())
+		planData.Readme = utils.ReconcileReadme(planData.Readme, subgraph.GetReadme())
 	}
 
 	planData.Schema = utils.ReconcileSchema(planData.Schema, subgraphSchema)
