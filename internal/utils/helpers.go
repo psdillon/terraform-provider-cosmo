@@ -6,8 +6,11 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
+// ReconcileSchema returns the schema to store in state. When schema isn't set in config (null), Terraform
+// doesn't manage it: the schema is published outside Terraform, so Cosmo's schema is not copied into state.
+// Otherwise the configured value is kept when it differs from Cosmo's only by surrounding whitespace.
 func ReconcileSchema(configured types.String, serverSchema string) types.String {
-	if serverSchema == "" {
+	if configured.IsNull() || serverSchema == "" {
 		return configured
 	}
 	return reconcileTrimmed(configured, serverSchema)

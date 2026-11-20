@@ -162,7 +162,7 @@ func (d *FeatureSubgraphDataSource) Read(ctx context.Context, req datasource.Rea
 		data.Readme = types.StringValue(subgraph.GetReadme())
 	}
 
-	data.Schema = utils.ReconcileSchema(data.Schema, subgraphSchema)
+	data.Schema = types.StringValue(subgraphSchema)
 
 	utils.LogAction(ctx, "read subgraph", data.ID.ValueString(), data.Name.ValueString(), data.Namespace.ValueString())
 

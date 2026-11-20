@@ -32,10 +32,10 @@ func TestReconcileSchema(t *testing.T) {
 			expected:     types.StringValue("type Query {\n  world: String\n}"),
 		},
 		{
-			name:         "adopts server value when configured is null (import)",
+			name:         "keeps null when schema is not managed by terraform",
 			configured:   types.StringNull(),
 			serverSchema: "type Query {\n  hello: String\n}",
-			expected:     types.StringValue("type Query {\n  hello: String\n}"),
+			expected:     types.StringNull(),
 		},
 		{
 			name:         "keeps configured value when server schema is empty",
