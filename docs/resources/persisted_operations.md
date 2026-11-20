@@ -51,7 +51,7 @@ resource "cosmo_persisted_operations" "test" {
 
 ### Optional
 
-- `namespace` (String) The namespace of the federated graph.
+- `namespace` (String) The **name** (not ID) of the namespace of the federated graph.
 
 ### Read-Only
 

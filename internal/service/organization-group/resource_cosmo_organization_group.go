@@ -26,6 +26,7 @@ var (
 	_ resource.ResourceWithConfigure      = (*OrganizationGroupResource)(nil)
 	_ resource.ResourceWithImportState    = (*OrganizationGroupResource)(nil)
 	_ resource.ResourceWithValidateConfig = (*OrganizationGroupResource)(nil)
+	_ resource.ResourceWithModifyPlan     = (*OrganizationGroupResource)(nil)
 )
 
 type OrganizationGroupResource struct {
@@ -97,7 +98,7 @@ For more information on groups, please refer to the [Cosmo Documentation](https:
 							},
 						},
 						"namespaces": schema.SetAttribute{
-							MarkdownDescription: "Namespace IDs (for example `cosmo_namespace.example.id`) the role is limited to. Omit to grant the role on all namespaces. Not allowed for the `organization-*` admin, developer and viewer roles, or together with `resources`.",
+							MarkdownDescription: "Namespace **IDs** (not names) the role is limited to, for example `cosmo_namespace.example.id`, or `data.cosmo_namespace.example.id` for a namespace Terraform doesn't manage. Omit to grant the role on all namespaces. Not allowed for the `organization-*` admin, developer and viewer roles, or together with `resources`.",
 							Optional:            true,
 							ElementType:         types.StringType,
 							Validators: []validator.Set{
@@ -180,9 +181,40 @@ func (r *OrganizationGroupResource) ValidateConfig(ctx context.Context, req reso
 	}
 }
 
+// ModifyPlan checks the rules' namespace IDs during plan, so a namespace name or a wrong ID fails
+// before anything is applied. Values that are unknown during plan, such as the ID of a namespace
+// created in the same apply, are checked again in Create and Update.
+func (r *OrganizationGroupResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	if req.Plan.Raw.IsNull() || r.client == nil {
+		return // destroying, or the provider isn't configured yet
+	}
+
+	var planRules types.Set
+	resp.Diagnostics.Append(req.Plan.GetAttribute(ctx, path.Root("rules"), &planRules)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	if !req.State.Raw.IsNull() {
+		var stateRules types.Set
+		resp.Diagnostics.Append(req.State.GetAttribute(ctx, path.Root("rules"), &stateRules)...)
+		if resp.Diagnostics.HasError() || planRules.Equal(stateRules) {
+			return // the rules aren't changing, so nothing will be sent
+		}
+	}
+
+	resp.Diagnostics.Append(r.checkRuleNamespaces(ctx, planRules)...)
+}
+
 func (r *OrganizationGroupResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var data OrganizationGroupResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Check before creating the group, so a bad namespace doesn't leave a group without its rules.
+	resp.Diagnostics.Append(r.checkRuleNamespaces(ctx, data.Rules)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -250,6 +282,11 @@ func (r *OrganizationGroupResource) Read(ctx context.Context, req resource.ReadR
 func (r *OrganizationGroupResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var data OrganizationGroupResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	resp.Diagnostics.Append(r.checkRuleNamespaces(ctx, data.Rules)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}

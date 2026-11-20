@@ -75,7 +75,7 @@ resource "cosmo_contract" "test" {
 ### Required
 
 - `name` (String)
-- `namespace` (String)
+- `namespace` (String) The **name** (not ID) of the namespace in which the contract is located.
 - `routing_url` (String)
 - `source` (String)
 

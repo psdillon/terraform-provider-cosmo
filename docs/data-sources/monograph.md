@@ -27,7 +27,7 @@ data "cosmo_monograph" "example" {
 
 ### Optional
 
-- `namespace` (String) The namespace in which the monograph is located.
+- `namespace` (String) The **name** (not ID) of the namespace in which the monograph is located.
 
 ### Read-Only
 

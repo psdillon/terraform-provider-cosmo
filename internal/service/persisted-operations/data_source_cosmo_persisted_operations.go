@@ -6,6 +6,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/wundergraph/cosmo/terraform-provider-cosmo/internal/api"
 	"github.com/wundergraph/cosmo/terraform-provider-cosmo/internal/utils"
@@ -51,9 +52,12 @@ func (d *PersistedOperationsDataSource) Schema(ctx context.Context, req datasour
 				MarkdownDescription: "The name of the federated graph.",
 			},
 			"namespace": schema.StringAttribute{
-				MarkdownDescription: "The namespace of the federated graph. Defaults to `default`.",
+				MarkdownDescription: "The **name** (not ID) of the namespace of the federated graph. Defaults to `default`.",
 				Optional:            true,
 				Computed:            true,
+				Validators: []validator.String{
+					utils.NamespaceName(),
+				},
 			},
 			"client_name": schema.StringAttribute{
 				Required:            true,

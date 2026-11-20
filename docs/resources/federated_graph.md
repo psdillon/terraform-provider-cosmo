@@ -37,7 +37,7 @@ resource "cosmo_federated_graph" "test" {
 - `admission_webhook_secret` (String, Sensitive) The secret token used to authenticate the admission webhook requests.
 - `admission_webhook_url` (String) The URL for the admission webhook that will be triggered during graph operations.
 - `label_matchers` (List of String) A list of label matchers used to select the services that will form the federated graph.
-- `namespace` (String) The namespace in which the federated graph is located. Defaults to 'default' if not provided.
+- `namespace` (String) The **name** (not ID) of the namespace in which the federated graph is located. Defaults to 'default' if not provided.
 - `readme` (String) Readme content for the federated graph.
 
 ### Read-Only

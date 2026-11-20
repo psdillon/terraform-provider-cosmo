@@ -90,12 +90,15 @@ For more information on subgraphs, please refer to the [Cosmo Documentation](htt
 				},
 			},
 			"namespace": schema.StringAttribute{
-				MarkdownDescription: "The namespace in which the subgraph is located.",
+				MarkdownDescription: "The **name** (not ID) of the namespace in which the subgraph is located.",
 				Optional:            true,
 				Computed:            true,
 				Default:             stringdefault.StaticString("default"),
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
+				},
+				Validators: []validator.String{
+					utils.NamespaceName(),
 				},
 			},
 			"routing_url": schema.StringAttribute{

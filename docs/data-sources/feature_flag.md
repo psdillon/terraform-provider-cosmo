@@ -28,7 +28,7 @@ data "cosmo_feature_flag" "example" {
 
 ### Optional
 
-- `namespace` (String) The namespace of the feature flag. Defaults to the default namespace.
+- `namespace` (String) The **name** (not ID) of the namespace of the feature flag. Defaults to the default namespace.
 
 ### Read-Only
 

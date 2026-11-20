@@ -47,7 +47,7 @@ At least one feature subgraph must be provided.
 - `is_enabled` (Boolean) Indicates whether the feature flag is enabled.
 - `labels` (Map of String) The labels associated with the feature flag. These labels indicate which 
 federated graphs can be associated with the feature flag to enabled calls against the corresponding feature subgraph.
-- `namespace` (String) The namespace of the feature flag.
+- `namespace` (String) The **name** (not ID) of the namespace of the feature flag.
 
 ### Read-Only
 

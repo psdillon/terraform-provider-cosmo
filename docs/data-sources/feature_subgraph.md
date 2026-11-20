@@ -28,7 +28,7 @@ data "cosmo_feature_subgraph" "example" {
 
 ### Optional
 
-- `namespace` (String) The namespace of the feature subgraph.
+- `namespace` (String) The **name** (not ID) of the namespace of the feature subgraph.
 
 ### Read-Only
 

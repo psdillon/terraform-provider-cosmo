@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/wundergraph/cosmo/connect-go/gen/proto/wg/cosmo/common"
 	platformv1 "github.com/wundergraph/cosmo/connect-go/gen/proto/wg/cosmo/platform/v1"
 	"strings"
@@ -69,9 +70,13 @@ For more information, refer to the Cosmo Documentation at https://cosmo-docs.wun
 				},
 			},
 			"namespace": schema.StringAttribute{
-				Required: true,
+				MarkdownDescription: "The **name** (not ID) of the namespace in which the contract is located.",
+				Required:            true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
+				},
+				Validators: []validator.String{
+					utils.NamespaceName(),
 				},
 			},
 			"source": schema.StringAttribute{

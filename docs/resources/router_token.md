@@ -64,7 +64,7 @@ A recreated graph gets a new `id`, which triggers the replacement. For a monogra
 
 ### Optional
 
-- `namespace` (String) The namespace to create the token in.
+- `namespace` (String) The **name** (not ID) of the namespace to create the token in.
 
 ### Read-Only
 

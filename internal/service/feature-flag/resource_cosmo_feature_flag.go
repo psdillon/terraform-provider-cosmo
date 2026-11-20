@@ -78,12 +78,15 @@ To learn more about the concept of feature flags, please refer to the [concept](
 				},
 			},
 			"namespace": schema.StringAttribute{
-				MarkdownDescription: "The namespace of the feature flag.",
+				MarkdownDescription: "The **name** (not ID) of the namespace of the feature flag.",
 				Optional:            true,
 				Computed:            true,
 				Default:             stringdefault.StaticString("default"),
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
+				},
+				Validators: []validator.String{
+					utils.NamespaceName(),
 				},
 			},
 			"feature_subgraphs": schema.SetAttribute{
