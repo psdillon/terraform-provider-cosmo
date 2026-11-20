@@ -3,6 +3,8 @@ package api
 import (
 	"context"
 	"fmt"
+	"math/rand/v2"
+	"time"
 
 	"connectrpc.com/connect"
 
@@ -40,14 +42,45 @@ func (p *PlatformClient) GetToken(ctx context.Context, name, graphName, namespac
 	return nil, &ApiError{Err: ErrNotFound, Reason: "GetToken", Status: common.EnumStatusCode_ERR}
 }
 
+// createTokenAttempts is how many times CreateToken tries to create a token when Cosmo answers with
+// an internal error.
+const createTokenAttempts = 5
+
+// createTokenRetryDelay returns how long CreateToken waits before trying again. Cosmo's tokens are
+// JWTs whose only time claim is in seconds, so the wait must be over a second for the next token to
+// differ. The random part spreads out tokens that failed together, so they don't collide again.
+var createTokenRetryDelay = func() time.Duration {
+	return 1100*time.Millisecond + rand.N(time.Second)
+}
+
 func (p *PlatformClient) CreateToken(ctx context.Context, name, graphName, namespace string) (string, *ApiError) {
-	request := connect.NewRequest(&platformv1.CreateFederatedGraphTokenRequest{
+	request := &platformv1.CreateFederatedGraphTokenRequest{
 		GraphName: graphName,
 		Namespace: namespace,
 		TokenName: name,
-	})
+	}
 
-	response, err := p.Client.CreateFederatedGraphToken(ctx, request)
+	// Cosmo signs a router token from the graph, the API key's user and the current second only, so
+	// two tokens for the same graph created in the same second are identical. Cosmo then fails the
+	// second one with an internal error (the token column is unique), which happens when Terraform
+	// creates several tokens for one graph in parallel. Nothing is stored when that happens, so try
+	// again a little later.
+	var response *connect.Response[platformv1.CreateFederatedGraphTokenResponse]
+	var err error
+	for attempt := 1; ; attempt++ {
+		response, err = p.Client.CreateFederatedGraphToken(ctx, connect.NewRequest(request))
+		if err == nil || connect.CodeOf(err) != connect.CodeInternal || attempt == createTokenAttempts {
+			break
+		}
+
+		timer := time.NewTimer(createTokenRetryDelay())
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return "", &ApiError{Err: fmt.Errorf("%w (gave up retrying: %w)", err, ctx.Err()), Reason: "CreateToken", Status: common.EnumStatusCode_ERR}
+		case <-timer.C:
+		}
+	}
 	if err != nil {
 		return "", &ApiError{Err: err, Reason: "CreateToken", Status: common.EnumStatusCode_ERR}
 	}
