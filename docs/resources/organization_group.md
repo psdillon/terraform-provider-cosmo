@@ -64,7 +64,7 @@ Required:
 
 Optional:
 
-- `namespaces` (Set of String) Namespace IDs (for example `cosmo_namespace.example.id`) the role is limited to. Omit to grant the role on all namespaces. Not allowed for the `organization-*` admin, developer and viewer roles, or together with `resources`.
+- `namespaces` (Set of String) Namespace **IDs** (not names) the role is limited to, for example `cosmo_namespace.example.id`, or `data.cosmo_namespace.example.id` for a namespace Terraform doesn't manage. Omit to grant the role on all namespaces. Not allowed for the `organization-*` admin, developer and viewer roles, or together with `resources`.
 - `resources` (Set of String) Target IDs of the federated graphs or subgraphs the role is limited to. Omit to grant the role on all resources. Not allowed for the `organization-*` admin, developer and viewer roles, or together with `namespaces`.
 
 ## Import

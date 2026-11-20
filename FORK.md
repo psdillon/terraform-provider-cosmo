@@ -120,6 +120,11 @@ Requirements and caveats:
   uses needs the `organization-admin` role.
 - The API key's secret is returned only once, when the key is created. Terraform stores it in the state
   file, so treat the state as a secret.
+- A rule's `namespaces` list takes namespace **IDs**, not names: `cosmo_namespace.<name>.id`, or
+  `data.cosmo_namespace.<name>.id` for a namespace Terraform doesn't manage. The provider checks them
+  during plan (and again before creating or updating the group). A name fails with an error that gives
+  the namespace's ID, and an ID that doesn't exist fails too. Without this check, Cosmo would fail with
+  a generic internal error, or silently drop the ID.
 - A rule's `resources` list needs target IDs for federated graphs and subgraphs. The existing
   `cosmo_federated_graph` and `cosmo_subgraph` resources don't expose those IDs yet, so for now scope
   rules with `namespaces`.

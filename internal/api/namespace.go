@@ -91,6 +91,26 @@ func (p *PlatformClient) GetNamespace(ctx context.Context, id, name string) (*pl
 	return response.Msg.Namespace, nil
 }
 
+// GetNamespaces lists the namespaces the API key can see.
+func (p *PlatformClient) GetNamespaces(ctx context.Context) ([]*platformv1.Namespace, *ApiError) {
+	request := connect.NewRequest(&platformv1.GetNamespacesRequest{})
+	response, err := p.Client.GetNamespaces(ctx, request)
+	if err != nil {
+		return nil, &ApiError{Err: err, Reason: "GetNamespaces", Status: common.EnumStatusCode_ERR}
+	}
+
+	if response.Msg == nil {
+		return nil, &ApiError{Err: ErrEmptyMsg, Reason: "GetNamespaces", Status: common.EnumStatusCode_ERR}
+	}
+
+	apiError := handleErrorCodes(response.Msg.GetResponse().GetCode(), response.Msg.GetResponse().GetDetails())
+	if apiError != nil {
+		return nil, apiError
+	}
+
+	return response.Msg.GetNamespaces(), nil
+}
+
 // NamespaceProposalConfig is the proposal setting of a namespace as Cosmo reports it.
 type NamespaceProposalConfig struct {
 	Enabled              bool
