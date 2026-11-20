@@ -481,6 +481,6 @@ func (r *FeatureSubgraphResource) createAndPublishFeatureSubgraph(ctx context.Co
 }
 
 func (r *FeatureSubgraphResource) publishSubgraphSchema(ctx context.Context, data FeatureSubgraphResourceModel) *api.ApiError {
-	_, apiError := r.client.PublishSubgraph(ctx, data.Name.ValueString(), data.Namespace.ValueString(), data.Schema.ValueString())
+	_, apiError := r.client.PublishFeatureSubgraph(ctx, data.Name.ValueString(), data.Namespace.ValueString(), data.Schema.ValueString())
 	return apiError
 }

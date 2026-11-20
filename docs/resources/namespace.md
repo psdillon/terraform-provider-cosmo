@@ -5,7 +5,9 @@ subcategory: ""
 description: |-
   Namespaces group federated graphs and subgraphs. Each organization has a default, non-deletable namespace.
   For more information on namespaces, please refer to the Cosmo Documentation https://cosmo-docs.wundergraph.com/cli/namespace.
-  Set proposals to turn on schema proposals https://cosmo-docs.wundergraph.com/concepts/proposals for the namespace. With proposals on, Cosmo compares each subgraph schema check and publish in the namespace against the approved proposals. This includes the subgraph schemas this provider publishes. Proposals need a Cosmo plan that includes them.
+  Set proposals to turn on schema proposals https://cosmo-docs.wundergraph.com/concepts/proposals for the namespace. With proposals on, Cosmo compares each subgraph schema check and publish in the namespace against the approved proposals. Proposals need a Cosmo plan that includes them.
+  Terraform has no way to create proposals. So when the publish severity is error, and this provider publishes a subgraph schema or deletes a subgraph or feature subgraph in the namespace, it turns proposals off for that namespace, makes the change, and turns them back on with the same severity levels. With publish severity warn, and for feature subgraph publishes, Cosmo doesn't block the change, so proposals are left alone.
+  The API key needs write access to the namespace to turn proposals off and on.While proposals are off, publishes from other tools to that namespace aren't checked against proposals either.Turning proposals off makes Cosmo discard their settings, and the provider can only put back the ones it knows about. If Cosmo reports proposal settings this provider version doesn't know about, the provider changes nothing and the apply fails, asking you to upgrade the provider.After turning proposals back on, the provider reads their settings again. If they differ from before, the apply fails with an error saying what changed.
 ---
 
 # cosmo_namespace (Resource)
@@ -14,7 +16,14 @@ Namespaces group federated graphs and subgraphs. Each organization has a default
 
 For more information on namespaces, please refer to the [Cosmo Documentation](https://cosmo-docs.wundergraph.com/cli/namespace).
 
-Set `proposals` to turn on [schema proposals](https://cosmo-docs.wundergraph.com/concepts/proposals) for the namespace. With proposals on, Cosmo compares each subgraph schema check and publish in the namespace against the approved proposals. This includes the subgraph schemas this provider publishes. Proposals need a Cosmo plan that includes them.
+Set `proposals` to turn on [schema proposals](https://cosmo-docs.wundergraph.com/concepts/proposals) for the namespace. With proposals on, Cosmo compares each subgraph schema check and publish in the namespace against the approved proposals. Proposals need a Cosmo plan that includes them.
+
+Terraform has no way to create proposals. So when the publish severity is `error`, and this provider publishes a subgraph schema or deletes a subgraph or feature subgraph in the namespace, it turns proposals off for that namespace, makes the change, and turns them back on with the same severity levels. With publish severity `warn`, and for feature subgraph publishes, Cosmo doesn't block the change, so proposals are left alone.
+
+- The API key needs write access to the namespace to turn proposals off and on.
+- While proposals are off, publishes from other tools to that namespace aren't checked against proposals either.
+- Turning proposals off makes Cosmo discard their settings, and the provider can only put back the ones it knows about. If Cosmo reports proposal settings this provider version doesn't know about, the provider changes nothing and the apply fails, asking you to upgrade the provider.
+- After turning proposals back on, the provider reads their settings again. If they differ from before, the apply fails with an error saying what changed.
 
 ## Example Usage
 
@@ -57,7 +66,7 @@ resource "cosmo_namespace" "with_proposals" {
 Optional:
 
 - `check_severity_level` (String) What happens when a subgraph schema check (`wgc subgraph check`) finds a schema that matches no approved or draft proposal: `error` fails the check, `warn` only reports it. Defaults to `error`.
-- `publish_severity_level` (String) What happens when a subgraph schema publish (`wgc subgraph publish`, or a `cosmo_subgraph` with a `schema`) sends a schema that matches no approved proposal: `error` rejects the publish, `warn` publishes it with a warning. Defaults to `error`.
+- `publish_severity_level` (String) What happens when a subgraph schema publish (for example `wgc subgraph publish`) sends a schema that matches no approved proposal: `error` rejects the publish, `warn` publishes it with a warning. Defaults to `error`.
 
 ## Import
 

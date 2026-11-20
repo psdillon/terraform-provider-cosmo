@@ -96,6 +96,15 @@ type NamespaceProposalConfig struct {
 	Enabled              bool
 	CheckSeverityLevel   platformv1.LintSeverity
 	PublishSeverityLevel platformv1.LintSeverity
+
+	// unknownSettings holds the raw data of any fields in Cosmo's answer that this provider's
+	// copy of the Cosmo API doesn't know about, such as proposal settings added to Cosmo later.
+	unknownSettings []byte
+}
+
+// HasUnknownSettings reports whether Cosmo sent proposal settings this provider doesn't know about.
+func (c *NamespaceProposalConfig) HasUnknownSettings() bool {
+	return len(c.unknownSettings) > 0
 }
 
 // EnableProposalsForNamespace turns proposals on or off for a namespace.
@@ -160,5 +169,6 @@ func (p *PlatformClient) GetNamespaceProposalConfig(ctx context.Context, namespa
 		Enabled:              response.Msg.GetEnabled(),
 		CheckSeverityLevel:   response.Msg.GetCheckSeverityLevel(),
 		PublishSeverityLevel: response.Msg.GetPublishSeverityLevel(),
+		unknownSettings:      response.Msg.ProtoReflect().GetUnknown(),
 	}, nil
 }

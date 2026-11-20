@@ -12,6 +12,10 @@ import (
 type PlatformClient struct {
 	Client      platformv1connect.PlatformServiceClient
 	cosmoApiKey string
+
+	// proposals tracks namespaces whose schema proposals are turned off while subgraphs are
+	// published or deleted (see withProposalsSuspended).
+	proposals proposalSuspensions
 }
 
 func NewClient(apiKey, apiUrl string) (*PlatformClient, error) {

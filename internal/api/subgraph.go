@@ -48,7 +48,15 @@ func (p *PlatformClient) UpdateSubgraph(ctx context.Context, data *platformv1.Up
 	return nil
 }
 
+// DeleteSubgraph deletes a subgraph. If the namespace has schema proposals turned on, they are
+// turned off while the subgraph is deleted and then turned back on (see withProposalsSuspended).
 func (p *PlatformClient) DeleteSubgraph(ctx context.Context, name, namespace string) *ApiError {
+	return p.withProposalsSuspended(ctx, namespace, func() *ApiError {
+		return p.deleteSubgraph(ctx, name, namespace)
+	})
+}
+
+func (p *PlatformClient) deleteSubgraph(ctx context.Context, name, namespace string) *ApiError {
 	request := connect.NewRequest(&platformv1.DeleteFederatedSubgraphRequest{
 		SubgraphName: name,
 		Namespace:    namespace,
@@ -136,7 +144,29 @@ func (p *PlatformClient) GetSubgraphSchema(ctx context.Context, name, namespace 
 	return response.Msg.GetSdl(), nil
 }
 
+// PublishSubgraph publishes a subgraph's schema. If the namespace has schema proposals turned on,
+// they are turned off while the schema is published and then turned back on (see
+// withProposalsSuspended).
 func (p *PlatformClient) PublishSubgraph(ctx context.Context, name, namespace, schema string) (*platformv1.PublishFederatedSubgraphResponse, *ApiError) {
+	var response *platformv1.PublishFederatedSubgraphResponse
+	apiError := p.withProposalsSuspended(ctx, namespace, func() *ApiError {
+		var publishError *ApiError
+		response, publishError = p.publishSubgraph(ctx, name, namespace, schema)
+		return publishError
+	})
+	if apiError != nil {
+		return nil, apiError
+	}
+	return response, nil
+}
+
+// PublishFeatureSubgraph publishes a feature subgraph's schema. Cosmo doesn't compare feature
+// subgraph schemas with proposals, so unlike PublishSubgraph this leaves proposals alone.
+func (p *PlatformClient) PublishFeatureSubgraph(ctx context.Context, name, namespace, schema string) (*platformv1.PublishFederatedSubgraphResponse, *ApiError) {
+	return p.publishSubgraph(ctx, name, namespace, schema)
+}
+
+func (p *PlatformClient) publishSubgraph(ctx context.Context, name, namespace, schema string) (*platformv1.PublishFederatedSubgraphResponse, *ApiError) {
 	request := connect.NewRequest(&platformv1.PublishFederatedSubgraphRequest{
 		Name:      name,
 		Namespace: namespace,
