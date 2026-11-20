@@ -89,7 +89,7 @@ release. Remove the `dev_overrides` block from your Terraform CLI config file (`
 | `cosmo_organization_group`: create and manage organization groups (role-based permissions) | resource + data source | `feat/organization-group` | Data source tested against a real org. **Resource not yet tested** (needs an org with RBAC) |
 | `cosmo_api_key`: create organization API keys and assign them to a group | resource | `feat/api-key` | Tested against a real org: create, change group, import, destroy |
 | `cosmo_contract`: `create_temp_subgraph_if_needed` and `allow_recomposing_other_graphs`, to create a contract before its source graph has any subgraphs | resource options | `feat/contract-temp-subgraph` | Fork-only (unlikely to be accepted upstream). Partly tested against Cosmo Cloud: refusing when other graphs would be affected, publishing so the source graph composes, clean-up, and deleting after the contract exists. **Not yet tested end to end** (needs an org that allows two or more graphs) |
-| `cosmo_namespace`: `proposals`, to turn on schema proposals and set their check and publish severity levels | resource option | `feat/namespace-proposals` | Unit tests passing (fake Cosmo and plan-only). **Not yet tested against a real org** (needs a Cosmo plan with proposals) |
+| `cosmo_namespace`: `proposals`, to turn on schema proposals and set their check and publish severity levels. Subgraph publishes and deletes from Terraform turn proposals off and back on around the change | resource option | `feat/namespace-proposals` | Unit tests passing (fake Cosmo and plan-only). **Not yet tested against a real org** (needs a Cosmo plan with proposals) |
 
 Example:
 
@@ -177,9 +177,24 @@ resource "cosmo_namespace" "main" {
   proposal, `error` fails the check and `warn` only reports it.
 - `publish_severity_level`: when a publish sends a schema that matches no approved proposal, `error`
   rejects it and `warn` publishes it with a warning.
-- Publishes from Terraform count too. With `publish_severity_level = "error"`, a `cosmo_subgraph` with a
-  `schema` in that namespace (and the contract feature's temporary subgraph) is rejected unless an
-  approved proposal matches it.
+- Terraform can't create proposals, so with `publish_severity_level = "error"` Cosmo would reject every
+  schema publish and subgraph delete the provider makes. To avoid that, the provider turns proposals off
+  for the namespace, publishes or deletes, then turns them back on with the same severity levels. This
+  applies to `cosmo_subgraph`, `cosmo_feature_subgraph` and the contract feature's temporary subgraph,
+  whether or not the namespace itself is managed by Terraform.
+  - Proposals are left alone when Cosmo wouldn't block the change: with `publish_severity_level = "warn"`,
+    and when publishing a feature subgraph (deleting one is still blocked, so that does turn them off).
+  - The `COSMO_API_KEY` needs write access to the namespace, or the publish or delete fails with an
+    error saying so.
+  - While proposals are off (a few seconds per apply), publishes from other tools such as `wgc` aren't
+    checked against proposals either.
+  - Turning proposals off makes Cosmo discard their settings, and the provider can only put back the
+    ones it knows about. If Cosmo adds new proposal settings, the provider notices them, changes
+    nothing, and fails the apply asking you to upgrade the provider.
+  - After turning proposals back on, the provider reads their settings again. If turning them back on
+    fails, or the settings differ from before, the apply fails with an error naming the namespace and
+    the severity levels to restore. A `cosmo_namespace` with `proposals` set turns them back on at the
+    next apply.
 - Proposals need a Cosmo plan that includes them. On other plans, namespaces without `proposals` keep
   working as before.
 - The `default` namespace already exists, so it can't be created with Terraform. Importing it works, but
