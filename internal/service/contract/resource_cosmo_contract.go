@@ -249,8 +249,8 @@ func (r *contractResource) Read(ctx context.Context, req resource.ReadRequest, r
 		response, apiError := r.client.GetFederatedGraph(ctx, data.Name.ValueString(), data.Namespace.ValueString())
 		if apiError != nil {
 			if api.IsNotFoundError(apiError) {
-				utils.AddDiagnosticError(resp,
-					ErrReadingContract,
+				utils.AddDiagnosticWarning(resp,
+					ErrContractNotFound,
 					apiError.Error(),
 				)
 				resp.State.RemoveResource(ctx)

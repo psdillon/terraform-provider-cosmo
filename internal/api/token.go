@@ -21,8 +21,14 @@ func (p *PlatformClient) GetToken(ctx context.Context, name, graphName, namespac
 		return nil, &ApiError{Err: err, Reason: "GetToken", Status: common.EnumStatusCode_ERR}
 	}
 
-	if response.Msg.GetResponse().Code != common.EnumStatusCode_OK {
-		return nil, &ApiError{Err: fmt.Errorf("failed to get token: %s", response.Msg.GetResponse().GetDetails()), Reason: "GetToken", Status: common.EnumStatusCode_ERR}
+	if response.Msg == nil {
+		return nil, &ApiError{Err: ErrEmptyMsg, Reason: "GetToken", Status: common.EnumStatusCode_ERR}
+	}
+
+	// handleErrorCodes maps ERR_NOT_FOUND (e.g. the federated graph doesn't exist) to ErrNotFound, so
+	// the resource's Read removes the token from state instead of failing.
+	if apiError := handleErrorCodes(response.Msg.GetResponse().GetCode(), response.Msg.GetResponse().GetDetails()); apiError != nil {
+		return nil, apiError
 	}
 
 	for _, token := range response.Msg.Tokens {
