@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
@@ -58,7 +59,10 @@ func (d *SubgraphDataSource) Schema(ctx context.Context, req datasource.SchemaRe
 			},
 			"namespace": schema.StringAttribute{
 				Required:            true,
-				MarkdownDescription: "The namespace in which the subgraph is located.",
+				MarkdownDescription: "The **name** (not ID) of the namespace in which the subgraph is located.",
+				Validators: []validator.String{
+					utils.NamespaceName(),
+				},
 			},
 			"routing_url": schema.StringAttribute{
 				Computed:            true,

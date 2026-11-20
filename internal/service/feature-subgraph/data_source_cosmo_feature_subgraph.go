@@ -6,6 +6,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/wundergraph/cosmo/terraform-provider-cosmo/internal/api"
@@ -70,7 +71,10 @@ func (d *FeatureSubgraphDataSource) Schema(_ context.Context, _ datasource.Schem
 			},
 			"namespace": schema.StringAttribute{
 				Optional:            true,
-				MarkdownDescription: "The namespace of the feature subgraph.",
+				MarkdownDescription: "The **name** (not ID) of the namespace of the feature subgraph.",
+				Validators: []validator.String{
+					utils.NamespaceName(),
+				},
 			},
 			"routing_url": schema.StringAttribute{
 				Computed:            true,

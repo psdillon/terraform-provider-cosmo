@@ -25,7 +25,7 @@ data "cosmo_subgraph" "test" {
 ### Required
 
 - `name` (String) The name of the subgraph.
-- `namespace` (String) The namespace in which the subgraph is located.
+- `namespace` (String) The **name** (not ID) of the namespace in which the subgraph is located.
 
 ### Read-Only
 

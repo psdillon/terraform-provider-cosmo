@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	common "github.com/wundergraph/cosmo/connect-go/gen/proto/wg/cosmo/common"
@@ -74,12 +75,15 @@ For more information on federated graphs, please refer to the [Cosmo Documentati
 				},
 			},
 			"namespace": schema.StringAttribute{
-				MarkdownDescription: "The namespace in which the federated graph is located. Defaults to 'default' if not provided.",
+				MarkdownDescription: "The **name** (not ID) of the namespace in which the federated graph is located. Defaults to 'default' if not provided.",
 				Optional:            true,
 				Computed:            true,
 				Default:             stringdefault.StaticString("default"),
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
+				},
+				Validators: []validator.String{
+					utils.NamespaceName(),
 				},
 			},
 			"readme": schema.StringAttribute{

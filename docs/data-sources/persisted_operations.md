@@ -30,7 +30,7 @@ data "cosmo_persisted_operations" "test" {
 
 ### Optional
 
-- `namespace` (String) The namespace of the federated graph. Defaults to `default`.
+- `namespace` (String) The **name** (not ID) of the namespace of the federated graph. Defaults to `default`.
 
 ### Read-Only
 

@@ -25,7 +25,7 @@ data "cosmo_federated_graph" "test" {
 ### Required
 
 - `name` (String) The name of the federated graph.
-- `namespace` (String) The namespace in which the federated graph is located.
+- `namespace` (String) The **name** (not ID) of the namespace in which the federated graph is located.
 
 ### Read-Only
 

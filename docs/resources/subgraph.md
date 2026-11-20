@@ -36,7 +36,7 @@ resource "cosmo_subgraph" "test" {
 
 - `is_event_driven_graph` (Boolean) Indicates if the subgraph is event-driven.
 - `labels` (Map of String) Labels for the subgraph.
-- `namespace` (String) The namespace in which the subgraph is located.
+- `namespace` (String) The **name** (not ID) of the namespace in which the subgraph is located.
 - `readme` (String) The readme for the subgraph.
 - `routing_url` (String) The routing URL of the subgraph. Routing URL is required for normal subgraphs but not for event driven subgraphs.
 - `schema` (String) The schema for the subgraph.

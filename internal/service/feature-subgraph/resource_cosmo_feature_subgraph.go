@@ -87,12 +87,15 @@ For more information on feature subgraphs, please refer to the [Cosmo Documentat
 				},
 			},
 			"namespace": schema.StringAttribute{
-				MarkdownDescription: "The namespace to create the feature subgraph in.",
+				MarkdownDescription: "The **name** (not ID) of the namespace to create the feature subgraph in.",
 				Optional:            true,
 				Computed:            true,
 				Default:             stringdefault.StaticString("default"),
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
+				},
+				Validators: []validator.String{
+					utils.NamespaceName(),
 				},
 			},
 			"routing_url": schema.StringAttribute{

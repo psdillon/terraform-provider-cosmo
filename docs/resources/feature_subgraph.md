@@ -44,7 +44,7 @@ resource "cosmo_feature_subgraph" "example" {
 
 ### Optional
 
-- `namespace` (String) The namespace to create the feature subgraph in.
+- `namespace` (String) The **name** (not ID) of the namespace to create the feature subgraph in.
 - `readme` (String) The readme for the subgraph.
 - `schema` (String) The schema for the subgraph.
 - `subscription_protocol` (String) The subscription protocol for the subgraph.

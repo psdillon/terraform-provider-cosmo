@@ -38,7 +38,7 @@ resource "cosmo_monograph" "example" {
 
 - `admission_webhook_secret` (String) The admission webhook secret for the monograph.
 - `admission_webhook_url` (String) The admission webhook URL for the monograph.
-- `namespace` (String) The namespace in which the monograph is located.
+- `namespace` (String) The **name** (not ID) of the namespace in which the monograph is located.
 - `readme` (String) The readme for the subgraph.
 - `schema` (String) The schema for the subgraph.
 - `subscription_protocol` (String) The subscription protocol for the subgraph.

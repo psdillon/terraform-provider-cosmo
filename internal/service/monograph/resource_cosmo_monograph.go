@@ -69,12 +69,15 @@ For more information on monographs, please refer to the [Cosmo Documentation](ht
 				},
 			},
 			"namespace": schema.StringAttribute{
-				MarkdownDescription: "The namespace in which the monograph is located.",
+				MarkdownDescription: "The **name** (not ID) of the namespace in which the monograph is located.",
 				Optional:            true,
 				Computed:            true,
 				Default:             stringdefault.StaticString("default"),
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
+				},
+				Validators: []validator.String{
+					utils.NamespaceName(),
 				},
 			},
 			"graph_url": schema.StringAttribute{

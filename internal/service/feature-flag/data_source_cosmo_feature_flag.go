@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/wundergraph/cosmo/terraform-provider-cosmo/internal/api"
@@ -49,8 +50,11 @@ func (d *FeatureFlagDataSource) Schema(_ context.Context, _ datasource.SchemaReq
 				Required:            true,
 			},
 			"namespace": schema.StringAttribute{
-				MarkdownDescription: "The namespace of the feature flag. Defaults to the default namespace.",
+				MarkdownDescription: "The **name** (not ID) of the namespace of the feature flag. Defaults to the default namespace.",
 				Optional:            true,
+				Validators: []validator.String{
+					utils.NamespaceName(),
+				},
 			},
 			"feature_subgraphs": schema.SetAttribute{
 				MarkdownDescription: "The list of feature subgraphs associated with the feature flag.",

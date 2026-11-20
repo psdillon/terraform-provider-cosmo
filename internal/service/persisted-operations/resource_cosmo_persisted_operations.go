@@ -76,12 +76,15 @@ For more information on persisted operations, please refer to the [Cosmo Documen
 				},
 			},
 			"namespace": schema.StringAttribute{
-				MarkdownDescription: "The namespace of the federated graph.",
+				MarkdownDescription: "The **name** (not ID) of the namespace of the federated graph.",
 				Optional:            true,
 				Computed:            true,
 				Default:             stringdefault.StaticString("default"),
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
+				},
+				Validators: []validator.String{
+					utils.NamespaceName(),
 				},
 			},
 			"client_name": schema.StringAttribute{
