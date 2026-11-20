@@ -217,7 +217,7 @@ func (r *MonographResource) Create(ctx context.Context, req resource.CreateReque
 
 	data.Id = types.StringValue(monograph.GetId())
 	if monograph.Readme != nil {
-		data.Readme = types.StringValue(*monograph.Readme)
+		data.Readme = utils.ReconcileReadme(data.Readme, *monograph.Readme)
 	}
 
 	utils.LogAction(ctx, "created monograph", data.Id.ValueString(), data.Name.ValueString(), data.Namespace.ValueString())
@@ -303,7 +303,7 @@ func (r *MonographResource) Read(ctx context.Context, req resource.ReadRequest, 
 	data.GraphUrl = types.StringValue(subGraph.GetRoutingURL())
 
 	if monograph.Readme != nil {
-		data.Readme = types.StringValue(*monograph.Readme)
+		data.Readme = utils.ReconcileReadme(data.Readme, *monograph.Readme)
 	}
 
 	utils.LogAction(ctx, "read monograph", data.Id.ValueString(), data.Name.ValueString(), data.Namespace.ValueString())

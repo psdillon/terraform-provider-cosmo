@@ -207,7 +207,7 @@ func (r *SubgraphResource) Create(ctx context.Context, req resource.CreateReques
 	}
 
 	if subgraph.Readme != nil {
-		data.Readme = types.StringValue(subgraph.GetReadme())
+		data.Readme = utils.ReconcileReadme(data.Readme, subgraph.GetReadme())
 	}
 
 	data.Schema = utils.ReconcileSchema(data.Schema, subgraphSchema)
@@ -301,7 +301,7 @@ func (r *SubgraphResource) Read(ctx context.Context, req resource.ReadRequest, r
 	}
 
 	if subgraph.Readme != nil {
-		data.Readme = types.StringValue(subgraph.GetReadme())
+		data.Readme = utils.ReconcileReadme(data.Readme, subgraph.GetReadme())
 	}
 
 	data.Schema = utils.ReconcileSchema(data.Schema, subgraphSchema)
@@ -452,7 +452,7 @@ func (r *SubgraphResource) Update(ctx context.Context, req resource.UpdateReques
 	}
 
 	if subgraph.Readme != nil {
-		data.Readme = types.StringValue(subgraph.GetReadme())
+		data.Readme = utils.ReconcileReadme(data.Readme, subgraph.GetReadme())
 	}
 
 	data.Schema = utils.ReconcileSchema(data.Schema, subgraphSchema)
