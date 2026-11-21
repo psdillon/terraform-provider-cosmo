@@ -89,6 +89,7 @@ release. Remove the `dev_overrides` block from your Terraform CLI config file (`
 | `cosmo_organization_group`: create and manage organization groups (role-based permissions) | resource + data source | `feat/organization-group` | Data source tested against a real org. **Resource not yet tested** (needs an org with RBAC) |
 | `cosmo_api_key`: create organization API keys and assign them to a group | resource | `feat/api-key` | Tested against a real org: create, change group, import, destroy |
 | `cosmo_contract`: `create_temp_subgraph_if_needed` and `allow_recomposing_other_graphs`, to create a contract before its source graph has any subgraphs | resource options | `feat/contract-temp-subgraph` | Fork-only (unlikely to be accepted upstream). Partly tested against Cosmo Cloud: refusing when other graphs would be affected, publishing so the source graph composes, clean-up, and deleting after the contract exists. **Not yet tested end to end** (needs an org that allows two or more graphs) |
+| `cosmo_namespaces`: list every namespace (name and ID), to look up IDs by name | data source | `feat/namespaces-data-source` | Unit tests passing (fake Cosmo). **Not yet tested against a real org** |
 | `cosmo_namespace`: `proposals`, to turn on schema proposals and set their check and publish severity levels. Subgraph publishes and deletes from Terraform turn proposals off and back on around the change | resource option | `feat/namespace-proposals` | Unit tests passing (fake Cosmo and plan-only). **Not yet tested against a real org** (needs a Cosmo plan with proposals) |
 
 Example:
@@ -121,8 +122,10 @@ Requirements and caveats:
 - The API key's secret is returned only once, when the key is created. Terraform stores it in the state
   file, so treat the state as a secret.
 - A rule's `namespaces` list takes namespace **IDs**, not names: `cosmo_namespace.<name>.id`, or
-  `data.cosmo_namespace.<name>.id` for a namespace Terraform doesn't manage. The provider checks them
-  during plan (and again before creating or updating the group). A name fails with an error that gives
+  `data.cosmo_namespace.<name>.id` for a namespace Terraform doesn't manage. To look up several at
+  once, list them all with `data "cosmo_namespaces" "all" {}`, then pick by name, for example
+  `one([for ns in data.cosmo_namespaces.all.namespaces : ns.id if ns.name == "tobe"])`. The provider checks
+  the IDs during plan (and again before creating or updating the group). A name fails with an error that gives
   the namespace's ID, and an ID that doesn't exist fails too. Without this check, Cosmo would fail with
   a generic internal error, or silently drop the ID.
 - A rule's `resources` list needs target IDs for federated graphs and subgraphs. The existing

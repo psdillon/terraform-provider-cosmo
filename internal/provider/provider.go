@@ -120,6 +120,7 @@ func (p *CosmoProvider) DataSources(ctx context.Context) []func() datasource.Dat
 		federated_graph.NewFederatedGraphDataSource,
 		subgraph.NewSubgraphDataSource,
 		namespace.NewNamespaceDataSource,
+		namespace.NewNamespacesDataSource,
 		monograph.NewMonographDataSource,
 		contract.NewContractDataSource,
 		persisted_operations.NewPersistedOperationsDataSource,
